@@ -49,4 +49,7 @@ export interface UserSettings {
   showWeather: boolean;
   showGreeting: boolean;
   showShortcuts: boolean;
+  showTopWorldCapsule: boolean; // Hidden inside settings, off by default
+  dailyEnvironmentRotation: boolean; // Rotates to a new living world every 24 hours
+  lastRotationDate: string; // ISO date string (YYYY-MM-DD)
 }

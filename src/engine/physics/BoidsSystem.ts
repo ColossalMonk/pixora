@@ -67,6 +67,24 @@ export class BoidsSystem {
     this.height = height;
   }
 
+  /**
+   * Broadcasts an instantaneous shockwave that startles creatures,
+   * launching them outward with a high-energy velocity burst
+   */
+  public startle(x: number, y: number, radius = 180, power = 3.5): void {
+    const origin = new Vector2D(x, y);
+    for (const boid of this.boids) {
+      const d = boid.position.dist(origin);
+      if (d < radius && d > 0) {
+        const burst = Vector2D.sub(boid.position, origin);
+        burst.normalize();
+        const factor = (1 - d / radius) * power;
+        burst.mult(factor);
+        boid.velocity.add(burst);
+      }
+    }
+  }
+
   public update(
     delta: number,
     mouseX: number,

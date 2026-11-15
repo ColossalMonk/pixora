@@ -111,10 +111,12 @@ export class Engine {
       this.ctx.scale(dpr, dpr);
     }
 
-    // Compute cell dimensions based on font size and character density
-    const fontSize = this.config.fontSize;
-    const cellWidth = Math.max(6, Math.floor((fontSize * 0.6) / this.config.charDensity));
-    const cellHeight = Math.max(10, Math.floor(fontSize / this.config.charDensity));
+    // Compute cell dimensions based on font size and character density (with low-tier hardware scaling)
+    const isLowTier = this.config.performanceTier === 'low';
+    const effectiveDensity = isLowTier ? this.config.charDensity * 0.75 : this.config.charDensity;
+    const fontSize = isLowTier ? Math.max(16, this.config.fontSize + 2) : this.config.fontSize;
+    const cellWidth = Math.max(6, Math.floor((fontSize * 0.6) / effectiveDensity));
+    const cellHeight = Math.max(10, Math.floor(fontSize / effectiveDensity));
 
     const cols = Math.ceil(width / cellWidth);
     const rows = Math.ceil(height / cellHeight);
@@ -129,10 +131,15 @@ export class Engine {
   public updateConfig(newConfig: Partial<EngineConfig>): void {
     const prevFontSize = this.config.fontSize;
     const prevDensity = this.config.charDensity;
+    const prevTier = this.config.performanceTier;
 
     this.config = { ...this.config, ...newConfig };
 
-    if (prevFontSize !== this.config.fontSize || prevDensity !== this.config.charDensity) {
+    if (
+      prevFontSize !== this.config.fontSize ||
+      prevDensity !== this.config.charDensity ||
+      prevTier !== this.config.performanceTier
+    ) {
       this.resize();
     }
   }
@@ -202,8 +209,20 @@ export class Engine {
     ctx.textBaseline = 'top';
 
     const useTrueColor = this.config.colorTheme === 'true-color';
+    let currentFill = '';
 
-    // Batch draw character grid
+    // Precompute quantized theme palette buckets (reduces Canvas state flushes from 2000+ to under 10)
+    const THEME_BUCKET_COUNT = 8;
+    const themeBuckets: string[] = [];
+    if (!useTrueColor) {
+      for (let b = 0; b < THEME_BUCKET_COUNT; b++) {
+        const intensity = b / (THEME_BUCKET_COUNT - 1);
+        const rgb = getColorForIntensity(intensity, this.config.colorTheme);
+        themeBuckets.push(`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
+      }
+    }
+
+    // Batch draw character grid with fillStyle deduplication
     for (let r = 0; r < rows; r++) {
       const y = r * ch;
       const rowOffset = r * cols;
@@ -214,13 +233,21 @@ export class Engine {
 
         const x = c * cw;
 
+        let nextFill = '';
         if (useTrueColor) {
-          ctx.fillStyle = `rgba(${cell.r}, ${cell.g}, ${cell.b}, ${cell.a})`;
+          nextFill = cell.a >= 0.99
+            ? `rgb(${cell.r}, ${cell.g}, ${cell.b})`
+            : `rgba(${cell.r}, ${cell.g}, ${cell.b}, ${cell.a.toFixed(2)})`;
         } else {
-          // Map cell brightness to themed color
+          // Map cell brightness to precomputed theme bucket
           const lum = (0.299 * cell.r + 0.587 * cell.g + 0.114 * cell.b) / 255;
-          const themed = getColorForIntensity(lum, this.config.colorTheme);
-          ctx.fillStyle = `rgba(${themed.r}, ${themed.g}, ${themed.b}, ${cell.a})`;
+          const bucketIndex = Math.min(THEME_BUCKET_COUNT - 1, Math.max(0, Math.floor(lum * THEME_BUCKET_COUNT)));
+          nextFill = themeBuckets[bucketIndex];
+        }
+
+        if (nextFill !== currentFill) {
+          ctx.fillStyle = nextFill;
+          currentFill = nextFill;
         }
 
         ctx.fillText(cell.char, x, y);

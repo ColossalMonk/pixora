@@ -17,6 +17,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
     charDensity,
     animationSpeed,
     reducedMotion,
+    performanceTier,
     dimBackground,
     userName,
     searchEngine,
@@ -28,6 +29,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
     showWeather,
     showGreeting,
     showShortcuts,
+    showTopWorldCapsule,
+    dailyEnvironmentRotation,
     updateSettings,
   } = useSettingsStore();
 
@@ -119,6 +122,22 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
             </div>
 
             <div className="space-y-3">
+              <div>
+                <label className="block text-slate-400 mb-1">Hardware Performance Tier</label>
+                <select
+                  value={performanceTier}
+                  onChange={(e) => updateSettings({ performanceTier: e.target.value as 'low' | 'balanced' | 'high' })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-slate-200 outline-none"
+                >
+                  <option value="low">Low / Battery Saver (Old Laptops & Integrated GPUs)</option>
+                  <option value="balanced">Balanced (Locked 60 FPS)</option>
+                  <option value="high">Ultra High (Full Density & Caustics)</option>
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Low tier scales grid density down 25% and batches canvas draw calls for low-end hardware.
+                </p>
+              </div>
+
               <div>
                 <div className="flex justify-between text-slate-400 mb-1">
                   <span>Font Size</span>
@@ -320,6 +339,32 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
                   type="checkbox"
                   checked={showShortcuts}
                   onChange={(e) => updateSettings({ showShortcuts: e.target.checked })}
+                  className="accent-teal-400"
+                />
+              </label>
+
+              <label className="flex items-center justify-between text-slate-300 cursor-pointer pt-3 border-t border-white/5">
+                <div>
+                  <div className="font-medium text-slate-200">Top Worlds Capsule Switcher</div>
+                  <div className="text-[10px] text-slate-400">Floating quick-switch pill at top (off by default)</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={showTopWorldCapsule}
+                  onChange={(e) => updateSettings({ showTopWorldCapsule: e.target.checked })}
+                  className="accent-teal-400"
+                />
+              </label>
+
+              <label className="flex items-center justify-between text-slate-300 cursor-pointer pt-3 border-t border-white/5">
+                <div>
+                  <div className="font-medium text-slate-200">Daily World Rotation (24h)</div>
+                  <div className="text-[10px] text-slate-400">Refresh to a fresh living world every 24 hours</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={dailyEnvironmentRotation}
+                  onChange={(e) => updateSettings({ dailyEnvironmentRotation: e.target.checked })}
                   className="accent-teal-400"
                 />
               </label>

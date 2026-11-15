@@ -108,6 +108,11 @@ export class UnderwaterWorld extends BaseEnvironment {
     const mouseActive = mouse.x > 0 && mouse.y > 0;
     this.boids.update(deltaTime, mouse.x, mouse.y, mouseActive);
 
+    // Startle fish school on pointer click
+    if (mouse.clicked && mouse.clickX > 0 && mouse.clickY > 0) {
+      this.boids.startle(mouse.clickX, mouse.clickY, 220, 4.0);
+    }
+
     // Update bubbles
     for (const b of this.bubbles) {
       b.y -= b.speed * deltaTime * 60;
@@ -235,22 +240,22 @@ export class UnderwaterWorld extends BaseEnvironment {
       const row = Math.floor(boid.position.y / grid.cellHeight);
       const heading = boid.velocity.heading();
 
-      // Fish shape facing direction
+      // Multi-segment sinuous spine undulation
       const isRight = Math.cos(heading) >= 0;
-      const tailWiggle = Math.sin(boid.phase) > 0 ? '~' : '-';
+      const sinCurve = Math.sin(boid.phase);
+      const tailWiggle = Math.abs(sinCurve) > 0.4 ? '~' : '-';
       const headChar = isRight ? '>' : '<';
-      const bodyChar = '=';
+      const bodyChar = '≡';
+      const spineRowOffset = Math.round(sinCurve * 0.6);
 
       // Head
       grid.setCell(col, row, headChar, 94, 234, 212, 1.0);
-      // Body & Tail
-      if (isRight) {
-        grid.setCell(col - 1, row, bodyChar, 45, 212, 191, 0.9);
-        grid.setCell(col - 2, row, tailWiggle, 20, 184, 166, 0.7);
-      } else {
-        grid.setCell(col + 1, row, bodyChar, 45, 212, 191, 0.9);
-        grid.setCell(col + 2, row, tailWiggle, 20, 184, 166, 0.7);
-      }
+      // Articulated Mid-Body
+      const bodyCol = isRight ? col - 1 : col + 1;
+      grid.setCell(bodyCol, row + spineRowOffset, bodyChar, 45, 212, 191, 0.9);
+      // Undulating Tail
+      const tailCol = isRight ? col - 2 : col + 2;
+      grid.setCell(tailCol, row - spineRowOffset, tailWiggle, 20, 184, 166, 0.75);
     }
 
     // 5. Render Jellyfish

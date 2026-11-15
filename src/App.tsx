@@ -9,10 +9,19 @@ import { EnvironmentGallery } from './components/gallery/EnvironmentGallery';
 import { ImageConverterModal } from './components/converter/ImageConverterModal';
 import { SettingsDrawer } from './components/settings/SettingsDrawer';
 import { useSettingsStore } from './store/useSettingsStore';
+import { EnvironmentId } from './types/environment';
 import { Compass, Image as ImageIcon, Sliders, Sparkles } from 'lucide-react';
 
+const WORLDS_CAPSULE: { id: EnvironmentId; label: string }[] = [
+  { id: 'underwater', label: 'Ocean' },
+  { id: 'ripples', label: 'Ripples' },
+  { id: 'frog-pond', label: 'Pond' },
+  { id: 'cosmic-aurora', label: 'Aurora' },
+  { id: 'abstract-flow', label: 'Flow' },
+];
+
 export const App: React.FC = () => {
-  const { loadSettings } = useSettingsStore();
+  const { loadSettings, showTopWorldCapsule, activeEnvironment, setEnvironment } = useSettingsStore();
 
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isConverterOpen, setIsConverterOpen] = useState(false);
@@ -33,6 +42,32 @@ export const App: React.FC = () => {
         <div className="pointer-events-auto">
           <WeatherWidget />
         </div>
+
+        {/* Center: Optional Top Worlds Capsule Switcher (Hidden in settings, off by default) */}
+        {showTopWorldCapsule && (
+          <nav
+            aria-label="Quick World Switcher"
+            className="hidden md:flex items-center gap-1 p-1 rounded-full glass-panel shadow-lg pointer-events-auto border border-white/10 animate-fade-in"
+          >
+            {WORLDS_CAPSULE.map((w) => {
+              const isActive = activeEnvironment === w.id;
+              return (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => setEnvironment(w.id)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    isActive
+                      ? 'bg-teal-400 text-slate-950 font-semibold shadow-sm'
+                      : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {w.label}
+                </button>
+              );
+            })}
+          </nav>
+        )}
 
         {/* Right: Quick Tool Pills */}
         <div className="flex items-center gap-2 pointer-events-auto">

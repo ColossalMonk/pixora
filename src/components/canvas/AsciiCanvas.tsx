@@ -14,6 +14,7 @@ export const AsciiCanvas: React.FC = () => {
     charDensity,
     animationSpeed,
     reducedMotion,
+    performanceTier,
     dimBackground,
   } = useSettingsStore();
 
@@ -28,6 +29,7 @@ export const AsciiCanvas: React.FC = () => {
       colorTheme,
       animationSpeed,
       reducedMotion,
+      performanceTier,
     });
 
     engine.attach(canvasRef.current);
@@ -57,9 +59,10 @@ export const AsciiCanvas: React.FC = () => {
         colorTheme,
         animationSpeed,
         reducedMotion,
+        performanceTier,
       });
     }
-  }, [characterStyle, colorTheme, fontSize, charDensity, animationSpeed, reducedMotion]);
+  }, [characterStyle, colorTheme, fontSize, charDensity, animationSpeed, reducedMotion, performanceTier]);
 
   return (
     <div className="absolute inset-0 pointer-events-auto overflow-hidden">

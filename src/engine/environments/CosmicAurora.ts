@@ -34,7 +34,7 @@ export class CosmicAurora extends BaseEnvironment {
     }
   }
 
-  public update(deltaTime: number, mouse: MouseState, _grid: RenderGrid): void {
+  public update(deltaTime: number, _mouse: MouseState, _grid: RenderGrid): void {
     this.time += deltaTime * 0.8;
     for (const star of this.stars) {
       star.twinklePhase += deltaTime * 2.5;

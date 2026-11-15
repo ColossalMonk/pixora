@@ -234,7 +234,6 @@ export class UnderwaterWorld extends BaseEnvironment {
       const col = Math.floor(boid.position.x / grid.cellWidth);
       const row = Math.floor(boid.position.y / grid.cellHeight);
       const heading = boid.velocity.heading();
-      const speed = boid.velocity.mag();
 
       // Fish shape facing direction
       const isRight = Math.cos(heading) >= 0;

@@ -1,5 +1,5 @@
 import { CharacterStyle } from '../../types/engine';
-import { getCharForLuminance, bitsToBraille } from '../core/Charsets';
+import { getCharForLuminance } from '../core/Charsets';
 
 export interface ProcessedAsciiResult {
   text: string;
@@ -119,7 +119,7 @@ export class ImageProcessor {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => resolve(img);
-      img.onerror = (e) => reject(new Error('Failed to load image source'));
+      img.onerror = () => reject(new Error('Failed to load image source'));
 
       if (typeof source === 'string') {
         img.src = source;

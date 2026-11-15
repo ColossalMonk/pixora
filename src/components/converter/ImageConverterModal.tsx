@@ -106,7 +106,14 @@ export const ImageConverterModal: React.FC<ImageConverterModalProps> = ({ isOpen
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto py-4 space-y-4">
-          {!result && (
+          {loading && (
+            <div className="flex items-center justify-center p-8 text-slate-400 text-xs gap-2">
+              <Sparkles className="w-4 h-4 text-teal-400 animate-spin" />
+              <span>Processing character contours...</span>
+            </div>
+          )}
+
+          {!result && !loading && (
             <div
               onClick={() => fileInputRef.current?.click()}
               className="border-2 border-dashed border-white/15 hover:border-teal-400/50 rounded-2xl p-12 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-white/5"

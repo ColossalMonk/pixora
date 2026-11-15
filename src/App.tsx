@@ -12,7 +12,7 @@ import { useSettingsStore } from './store/useSettingsStore';
 import { Compass, Image as ImageIcon, Sliders, Sparkles } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const { isLoaded, loadSettings } = useSettingsStore();
+  const { loadSettings } = useSettingsStore();
 
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isConverterOpen, setIsConverterOpen] = useState(false);

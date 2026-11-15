@@ -2,7 +2,6 @@ import { BaseEnvironment } from './BaseEnvironment';
 import { RenderGrid } from '../core/RenderGrid';
 import { MouseState } from '../../types/engine';
 import { WaveEquation2D } from '../physics/WaveEquation2D';
-import { SimplexNoise } from '../physics/SimplexNoise';
 
 interface FloatingPetal {
   x: number;
@@ -18,7 +17,6 @@ interface FloatingPetal {
 export class InteractiveWater extends BaseEnvironment {
   public readonly id = 'ripples';
   private wave: WaveEquation2D;
-  private noise: SimplexNoise;
   private petals: FloatingPetal[] = [];
   private lastMouseX = -1;
   private lastMouseY = -1;
@@ -26,7 +24,6 @@ export class InteractiveWater extends BaseEnvironment {
   constructor() {
     super();
     this.wave = new WaveEquation2D(80, 40);
-    this.noise = new SimplexNoise(88);
   }
 
   public override init(grid: RenderGrid): void {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Check, Waves, Droplets, Sparkles, Wind, Bug } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import { EnvironmentId, EnvironmentMeta } from '../../types/environment';
+import { EnvironmentMeta } from '../../types/environment';
 
 export const ENVIRONMENTS_METADATA: EnvironmentMeta[] = [
   {

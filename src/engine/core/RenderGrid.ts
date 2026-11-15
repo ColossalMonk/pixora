@@ -1,5 +1,4 @@
 import { GridCell } from '../../types/engine';
-import { bitsToBraille } from './Charsets';
 
 export class RenderGrid {
   public cols: number = 0;

@@ -20,9 +20,9 @@ if (fs.existsSync(ZIP_FILE)) {
   fs.unlinkSync(ZIP_FILE);
 }
 
-// Use PowerShell Compress-Archive on Windows
+// Use PowerShell Compress-Archive with suppressed progress on Windows
 console.log(`Packaging extension into ${ZIP_FILE}...`);
-const psCommand = `Compress-Archive -Path "${DIST_DIR}\\*" -DestinationPath "${ZIP_FILE}" -Force`;
+const psCommand = `$ProgressPreference = 'SilentlyContinue'; Compress-Archive -Path "${DIST_DIR}\\*" -DestinationPath "${ZIP_FILE}" -Force`;
 execSync(`powershell -NoProfile -Command "${psCommand}"`, { stdio: 'inherit' });
 
 console.log(`Release created successfully: ${ZIP_FILE}`);

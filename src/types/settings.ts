@@ -31,6 +31,10 @@ export interface UserSettings {
   keepFlow: boolean;
   /** Tweaks-panel values per animal (only changed knobs are stored). */
   animalTweaks: Record<string, Record<string, number>>;
+  /** Worlds shift with the local time of day. */
+  timeOfDay: boolean;
+  /** Worlds react to the real weather (rain, snow, fog, storms). */
+  weatherLink: boolean;
 
   // Engine
   characterStyle: CharacterStyle;

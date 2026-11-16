@@ -5,6 +5,7 @@ import { Rasterizer } from './Rasterizer';
 import { calibrateRamps, resolveStyle } from './Charsets';
 import { themeBackdrop, themeLUT } from './PaletteManager';
 import { createEnvironment } from '../environments/registry';
+import { DESIGNED_SKY, SkyState, WeatherKind, blendBackdrop, grade, skyAt } from './Sky';
 import { zoneOf } from '../animals/kit';
 
 const STEP = 1 / 60;
@@ -139,6 +140,7 @@ export class Engine {
       this.active?.destroy?.();
       this.active = this.instance(baseId);
       this.activeId = baseId;
+      this.refreshSky(true);
       if (this.width > 0) this.active.init(this.context(this.active, false));
     }
     if (overlayId !== this.overlayId || baseChanged) {
@@ -155,6 +157,44 @@ export class Engine {
   }
 
   private tunings: Record<string, Record<string, number>> = {};
+
+  // ── Time of day + weather ──
+  private sky: SkyState = DESIGNED_SKY;
+  private skyKey = '';
+  private lastSkyCheck = 0;
+  private followClock = true;
+  private sunrise: Date | null = null;
+  private sunset: Date | null = null;
+  private weather: WeatherKind = 'clear';
+
+  /** Turns time-of-day shading on or off. */
+  public setTimeOfDay(enabled: boolean): void {
+    this.followClock = enabled;
+    this.refreshSky(true);
+  }
+
+  /** Live weather + today's sunrise/sunset (from the weather service). */
+  public setWeather(kind: WeatherKind, sunrise: Date | null, sunset: Date | null): void {
+    this.weather = kind;
+    this.sunrise = sunrise;
+    this.sunset = sunset;
+    this.refreshSky(true);
+  }
+
+  /** Recomputes the sky (cheap; called about every 20 s) and re-grades if it changed. */
+  private refreshSky(force = false): void {
+    const now = performance.now();
+    if (!force && now - this.lastSkyCheck < 20000) return;
+    this.lastSkyCheck = now;
+    const follows = this.followClock && !!this.active?.followsClock;
+    const sky = follows ? skyAt(new Date(), this.sunrise, this.sunset) : DESIGNED_SKY;
+    const key = follows ? `${sky.light.toFixed(2)}|${sky.warm.toFixed(2)}` : 'designed';
+    this.sky = sky;
+    if (key === this.skyKey && !force) return;
+    this.skyKey = key;
+    this.rasterizer.setGrade(follows ? (c) => grade(c, sky) : null);
+    this.prepareBackdrop();
+  }
 
   /** Tweaks-panel values for animals, keyed by animal id. Applies live. */
   public setTunings(all: Record<string, Record<string, number>>): void {
@@ -210,8 +250,14 @@ export class Engine {
 
   /** The central UI's bounding box; art fades softly behind it. */
   public setFocusRect(rect: { x: number; y: number; w: number; h: number } | null): void {
+    const prev = this.focusRect;
     this.focusRect = rect;
     this.grid.setFocusRect(rect, this.config.calmCenter);
+    const moved = !prev || !rect || Math.abs(prev.x - rect.x) + Math.abs(prev.y - rect.y) + Math.abs(prev.w - rect.w) + Math.abs(prev.h - rect.h) > 80;
+    if (moved && rect && this.active && this.width > 0) {
+      this.active.resize(this.context(this.active, false));
+      this.overlay?.resize(this.context(this.overlay, true));
+    }
     if (this.isStill()) this.renderStill();
   }
 
@@ -252,7 +298,9 @@ export class Engine {
 
   private prepareBackdrop(): void {
     if (!this.active || this.width === 0) return;
-    const stops = this.active.backdrop.map((c) => themeBackdrop(c, this.config.colorTheme));
+    const follows = this.followClock && !!this.active.followsClock;
+    const base = follows ? blendBackdrop(this.active.backdrop, this.active.backdropDay, this.sky) : this.active.backdrop;
+    const stops = base.map((c) => themeBackdrop(c, this.config.colorTheme));
     this.rasterizer.prepareBackdrop(this.width, this.height, this.dpr, stops);
     if (this.canvas) {
       // Faint cell grid (aligned to the character cells) over the world's gradient.
@@ -278,6 +326,9 @@ export class Engine {
       habitat: layered && this.active?.habitat ? zoneOf(this.active.habitat(this.width, this.height), env?.zone ?? 'any') : full,
       layered,
       bg: this.active ? this.active.backdrop[Math.floor(this.active.backdrop.length / 2)] : 0x0b0c12,
+      sky: this.sky,
+      weather: this.weather,
+      safe: this.focusRect,
     };
   }
 
@@ -345,6 +396,7 @@ export class Engine {
     if (!this.active) return;
 
     const t0 = performance.now();
+    this.refreshSky();
     const ctx = this.context(this.active, false);
     const octx = this.overlay ? this.context(this.overlay, true) : null;
     this.trackPointer(elapsed);
@@ -516,6 +568,9 @@ export class Engine {
       habitat: { top: 0, bottom: height, left: 0, right: width },
       layered: false,
       bg: env.backdrop[Math.floor(env.backdrop.length / 2)],
+      sky: DESIGNED_SKY,
+      weather: 'clear',
+      safe: null,
     };
     env.tune?.(tuning);
     env.init(wctx);

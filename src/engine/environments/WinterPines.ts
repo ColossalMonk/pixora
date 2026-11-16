@@ -17,6 +17,8 @@ export class WinterPines extends BaseEnvironment {
   public readonly id = 'winter-pines';
   public readonly preferredStyle = 'tiles' as const;
   public readonly backdrop = [hex('#0a1124'), hex('#111b36'), hex('#18264a'), hex('#0c1428')];
+  public readonly followsClock = true;
+  public readonly backdropDay = [hex('#4a6a92'), hex('#6684a8'), hex('#8aa3c0'), hex('#3b4f6b')];
 
   private noise = new SimplexNoise(12);
   private flakes: Flake[] = [];
@@ -92,7 +94,7 @@ export class WinterPines extends BaseEnvironment {
       const c = Math.min(grid.cols - 1, Math.max(0, Math.floor(f.x / grid.cellWidth)));
       const landRow = this.groundRow - this.drift[c];
       if (f.z > 0.6 && f.y / grid.cellHeight >= landRow) {
-        this.drift[c] = Math.min(5, this.drift[c] + 0.05);
+        this.drift[c] = Math.min(3, this.drift[c] + 0.04);
         f.y = -5;
         f.x = Math.random() * width;
       } else if (f.y > height + 5) {
@@ -122,7 +124,7 @@ export class WinterPines extends BaseEnvironment {
     for (let r = Math.floor(mr - rad * grid.aspect - 2); r <= mr + rad * grid.aspect + 2; r++) {
       for (let c = Math.floor(mc - rad - 2); c <= mc + rad + 2; c++) {
         const d = Math.hypot(c - mc, (r - mr) / grid.aspect);
-        if (d < rad) grid.putSolid(c, r, 0, 0, 0, d > rad - 0.8 ? hex('#cbd5e1') : hex('#e2e8f0'), 0.95, Layer.SKY);
+        if (d < rad) grid.putSolid(c, r, 0, 0, 0, ctx.sky.light > 0.5 ? hex('#fef3c7') : d > rad - 0.8 ? hex('#cbd5e1') : hex('#e2e8f0'), 0.95, Layer.SKY);
         else if (d < rad + 2.5) grid.putSolid(c, r, 0, 0, 0, hex('#cbd5e1'), (1 - (d - rad) / 2.5) * 0.08, Layer.SKY);
       }
     }

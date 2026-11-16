@@ -41,6 +41,10 @@ Each animal has a **Tweaks** panel (sliders icon in the bottom bar): how many, s
 
 **Layering** (Settings → *Layer an animal over worlds*) puts an animal on top of a world. Only animals that belong there are allowed: koi need open water, cranes need sky, fireflies need a warm night. Animals that don't fit are greyed out with the reason. Each world tells layered animals where its sky, water and ground are.
 
+**Time of day:** worlds that follow the clock (all but Campfire and Northern Lights) shift through dawn, day, dusk and night using your local sunrise and sunset: the lake gets a sun by day, city windows switch off, stars fade in daylight. Turn it off in Settings to see each world as designed.
+
+**Live weather:** real rain shows up in Moonlit Lake and Lily Pond, snow sets Winter Pines' snowfall, fog thickens the Night Forest mist, and storms bring more lightning to Rainy City. Off switch in Settings.
+
 **Daily rotation:** the world, animal and flow each change at your local midnight. Each has its own **Keep this forever** pin (bottom right; it pins whichever category you're viewing). Switching scenes crossfades.
 
 ## Look & feel

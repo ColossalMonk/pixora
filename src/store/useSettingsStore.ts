@@ -25,6 +25,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   keepAnimal: false,
   keepFlow: false,
   animalTweaks: {},
+  timeOfDay: true,
+  weatherLink: true,
   characterStyle: 'auto',
   colorTheme: 'true-color',
   fontSize: 14,

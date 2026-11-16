@@ -19,6 +19,8 @@ export class RainyCity extends BaseEnvironment {
   public readonly id = 'rainy-city';
   public readonly preferredStyle = 'tiles' as const;
   public readonly backdrop = [hex('#0a0f1f'), hex('#111830'), hex('#1a2038'), hex('#0c101d')];
+  public readonly followsClock = true;
+  public readonly backdropDay = [hex('#3b4a63'), hex('#4b5a73'), hex('#56657c'), hex('#2a3446')];
 
   private buildings: Building[] = [];
   private streaks: Streak[] = [];
@@ -74,7 +76,7 @@ export class RainyCity extends BaseEnvironment {
     this.nextBolt -= dt;
     if (input.clicks.length || this.nextBolt <= 0) {
       this.flash = 1;
-      this.nextBolt = 25 + Math.random() * 30;
+      this.nextBolt = ctx.weather === 'storm' ? 6 + Math.random() * 8 : 25 + Math.random() * 30;
       const x0 = input.clicks.length ? input.clicks[0].x : Math.random() * width;
       this.bolt = [[x0, 0]];
       let x = x0;
@@ -153,7 +155,7 @@ export class RainyCity extends BaseEnvironment {
             const h = hash2(c + Math.floor(b.seed), r);
             // A few windows switch on/off over time.
             const flicker = hash2(c * 3 + Math.floor(t / 7), r) > 0.97;
-            const lit = (h > (b.far ? 0.55 : 0.62)) !== flicker;
+            const lit = (h > (b.far ? 0.55 : 0.62) + ctx.sky.light * 0.32) !== flicker;
             if (lit) {
               fill = h > 0.9 ? hex('#bfdbfe') : mix(hex('#fbbf24'), hex('#fde68a'), h);
               a = b.far ? 0.55 : 0.85;

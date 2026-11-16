@@ -36,6 +36,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
     keepWorld,
     keepAnimal,
     keepFlow,
+    timeOfDay,
+    weatherLink,
     layerAnimals,
     activeWorld,
     activeAnimal,
@@ -435,6 +437,21 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
                   </label>
                 ))}
               </div>
+
+              <label className="flex items-center justify-between text-slate-300 cursor-pointer pt-3 border-t border-white/5">
+                <div>
+                  <div className="font-medium text-slate-200">Follow the time of day</div>
+                  <div className="text-[10px] text-slate-400">Worlds shift through dawn, day, dusk and night with your local sunrise and sunset</div>
+                </div>
+                <input type="checkbox" checked={timeOfDay} onChange={(e) => updateSettings({ timeOfDay: e.target.checked })} className="accent-teal-400" />
+              </label>
+              <label className="flex items-center justify-between text-slate-300 cursor-pointer">
+                <div>
+                  <div className="font-medium text-slate-200">Live weather in scenes</div>
+                  <div className="text-[10px] text-slate-400">Real rain, snow, fog and storms show up where they fit</div>
+                </div>
+                <input type="checkbox" checked={weatherLink} onChange={(e) => updateSettings({ weatherLink: e.target.checked })} className="accent-teal-400" />
+              </label>
 
               <div className="pt-3 border-t border-white/5 space-y-2">
                 <label className="flex items-center justify-between text-slate-300 cursor-pointer">

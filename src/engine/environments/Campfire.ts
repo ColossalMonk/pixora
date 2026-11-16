@@ -150,7 +150,7 @@ export class Campfire extends BaseEnvironment {
     const cx = this.fx0 + this.fw / 2;
     const cy = this.groundRow - 2;
     const flicker = 0.85 + Math.sin(t * 13) * 0.05 + Math.sin(t * 7.3) * 0.05 + this.flare * 0.3;
-    const R = this.fw * 1.6;
+    const R = this.fw * 1.15;
     for (let r = Math.max(0, Math.floor(cy - R * grid.aspect)); r < grid.rows; r++) {
       for (let c = Math.max(0, Math.floor(cx - R)); c < Math.min(cols, cx + R); c++) {
         const d = Math.hypot(c - cx, (r - cy) / grid.aspect) / R;

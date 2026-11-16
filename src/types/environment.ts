@@ -1,5 +1,6 @@
 import type { RenderGrid } from '../engine/core/RenderGrid';
 import type { InputState, ResolvedStyle } from './engine';
+import type { SkyState, WeatherKind } from '../engine/core/Sky';
 
 /** The three things a new tab can show. */
 export type SceneKind = 'world' | 'animal' | 'flow';
@@ -115,6 +116,12 @@ export interface WorldContext {
   layered: boolean;
   /** Background colour far creatures fade toward (packed RGB). */
   bg: number;
+  /** Light right now (time of day). Worlds that follow the clock adapt to it. */
+  sky: SkyState;
+  /** Live weather where the user is ('clear' when unknown or turned off). */
+  weather: WeatherKind;
+  /** Box of the clock / search / shortcuts; big features should stay clear of it. */
+  safe: { x: number; y: number; w: number; h: number } | null;
 }
 
 export interface IEnvironment {
@@ -131,6 +138,10 @@ export interface IEnvironment {
   render(ctx: WorldContext): void;
   /** Worlds: the space they offer an animal layered on top. */
   habitat?(width: number, height: number): Habitat;
+  /** Worlds: shift with the local time of day (backdrop + colour grade). */
+  readonly followsClock?: boolean;
+  /** Worlds: daytime backdrop stops (blended with `backdrop` by light). */
+  readonly backdropDay?: number[];
   /** Animals: which part of a world they live in when layered. */
   readonly zone?: Zone;
   /** Animals: apply Tweaks-panel values. */

@@ -30,6 +30,23 @@ export class Rasterizer {
     }
   }
 
+
+  /** Applies a colour grade (time of day) to every colour from now on; null removes it. */
+  public setGrade(fn: ((c: number) => number) | null): void {
+    for (let q = 0; q < 4096; q++) {
+      let r = ((q >> 8) & 15) * 17;
+      let g = ((q >> 4) & 15) * 17;
+      let b = (q & 15) * 17;
+      if (fn) {
+        const c = fn((r << 16) | (g << 8) | b);
+        r = (c >> 16) & 255;
+        g = (c >> 8) & 255;
+        b = c & 255;
+      }
+      this.colorStrings[q] = `rgb(${r},${g},${b})`;
+    }
+  }
+
   private glyphString(cp: number): string {
     let s = this.glyphStrings[cp];
     if (s === undefined) {

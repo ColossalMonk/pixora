@@ -17,7 +17,9 @@ const FLOWER_COLORS = [hex('#f9a8d4'), hex('#fde68a'), hex('#ffffff'), hex('#c4b
 export class Meadow extends BaseEnvironment {
   public readonly id = 'meadow';
   public readonly preferredStyle = 'tiles' as const;
-  public readonly backdrop = [hex('#1d1736'), hex('#2d1f45'), hex('#4a2a4a'), hex('#1b1324')];
+  public readonly backdrop = [hex('#0e1230'), hex('#151a3c'), hex('#1f2347'), hex('#0e1020')];
+  public readonly followsClock = true;
+  public readonly backdropDay = [hex('#3d6fa8'), hex('#5b8cc0'), hex('#8fb4d6'), hex('#2f4a63')];
 
   private noise = new SimplexNoise(31);
   private far = new Int16Array(0);
@@ -89,12 +91,13 @@ export class Meadow extends BaseEnvironment {
     const t = this.time;
 
     // Low sun behind the far hills.
-    const sunC = cols * 0.72;
+    const sunC = cols * 0.86;
     const sunR = grid.rows * 0.18;
     for (let r = Math.floor(this.far[Math.floor(sunC)] - sunR * grid.aspect * 1.6); r < this.far[Math.floor(sunC)] + 2; r++) {
       for (let c = Math.floor(sunC - sunR); c <= sunC + sunR; c++) {
         const d = Math.hypot(c - sunC, (r - (this.far[Math.floor(sunC)] - 2)) / grid.aspect) / sunR;
-        if (d < 1) grid.putSolid(c, r, 0, 0, 0, mix(hex('#fde68a'), hex('#fb923c'), d), 0.85 - d * 0.35, Layer.SKY);
+        const moon = 1 - Math.max(ctx.sky.light, ctx.sky.warm);
+        if (d < 1) grid.putSolid(c, r, 0, 0, 0, mix(mix(hex('#fde68a'), hex('#fb923c'), d), hex('#e2e8f0'), moon), (0.85 - d * 0.35) * (1 - moon * 0.3), Layer.SKY);
         else if (d < 1.6) grid.putSolid(c, r, 0, 0, 0, hex('#fb923c'), (1.6 - d) * 0.12, Layer.SKY);
       }
     }

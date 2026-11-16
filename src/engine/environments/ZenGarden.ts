@@ -18,6 +18,8 @@ export class ZenGarden extends BaseEnvironment {
   public readonly id = 'zen-garden';
   public readonly preferredStyle = 'tiles' as const;
   public readonly backdrop = [hex('#16171b'), hex('#1a1b1f'), hex('#15161a'), hex('#101114')];
+  public readonly followsClock = true;
+  public readonly backdropDay = [hex('#2a2722'), hex('#2f2b25'), hex('#29261f'), hex('#1f1c17')];
 
   private rocks: Rock[] = [];
   private rakeAngle = new Float32Array(0);
@@ -40,7 +42,9 @@ export class ZenGarden extends BaseEnvironment {
       [0.16, 0.3, 1.1], [0.84, 0.26, 0.9], [0.22, 0.76, 0.8], [0.78, 0.72, 1.2], [0.5, 0.88, 0.6],
     ];
     for (const [fx, fy, s] of spots) {
-      this.rocks.push({ x: width * fx, y: height * fy, r: Math.min(width, height) * 0.075 * s, seed: Math.random() * 10 });
+      const r = Math.min(width, height) * 0.075 * s;
+      const [x, y] = this.clearOfUI(width * fx, height * fy, r * 1.6, ctx.safe, width, height);
+      this.rocks.push({ x, y, r, seed: Math.random() * 10 });
     }
     this.petals = [];
     for (let i = 0; i < 10; i++) this.petals.push(this.newPetal(width, height, true));
@@ -148,7 +152,7 @@ export class ZenGarden extends BaseEnvironment {
             break;
           }
         }
-        if (!ringed && r % 3 === 0) {
+        if (!ringed && r % 4 === 0) {
           // Straight rows with a gentle wave.
           const wave = Math.sin(c * 0.06 + r * 0.4) * 0.4;
           glyph = wave > 0.25 ? code('~') : code('─');

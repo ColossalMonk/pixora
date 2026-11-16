@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Engine } from '../../engine/core/Engine';
 import { sceneFor, useSettingsStore } from '../../store/useSettingsStore';
+import { useLiveStore } from '../../store/useLiveStore';
 
 interface AsciiCanvasProps {
   /** Element whose box the art should fade behind (clock + search + shortcuts). */
@@ -19,6 +20,8 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef }) => {
     activeFlow,
     layerAnimals,
     animalTweaks,
+    timeOfDay,
+    weatherLink,
     characterStyle,
     colorTheme,
     fontSize,
@@ -64,6 +67,15 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef }) => {
   useEffect(() => {
     engineRef.current?.setTunings(animalTweaks);
   }, [animalTweaks]);
+
+  const weather = useLiveStore((s) => s.weather);
+  useEffect(() => {
+    engineRef.current?.setTimeOfDay(timeOfDay);
+  }, [timeOfDay, isLoaded]);
+  useEffect(() => {
+    const parse = (s?: string) => (s ? new Date(s) : null);
+    engineRef.current?.setWeather(weatherLink ? weather?.kind ?? 'clear' : 'clear', parse(weather?.sunrise), parse(weather?.sunset));
+  }, [weather, weatherLink, isLoaded]);
 
   useEffect(() => {
     const scene = sceneFor({ sceneKind, activeWorld, activeAnimal, activeFlow, layerAnimals });

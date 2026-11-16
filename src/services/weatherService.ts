@@ -1,4 +1,5 @@
 import { StorageService } from './storageService';
+import type { WeatherKind } from '../engine/core/Sky';
 
 /** Best-effort city from the browser's time zone (e.g. "Asia/Kolkata" → "Kolkata"). No network, no prompt. */
 export function guessCity(): string {
@@ -20,9 +21,14 @@ export interface WeatherData {
   timestamp: number;
   /** Which request this answers, so a changed city or unit never shows stale data. */
   key?: string;
+  /** Coarse weather for the scenes (rain in the lake, snow in the pines…). */
+  kind?: WeatherKind;
+  /** Today's sunrise / sunset, local ISO time (drives time-of-day shading). */
+  sunrise?: string;
+  sunset?: string;
 }
 
-const CACHE_KEY = 'pixora_weather_cache_v2';
+const CACHE_KEY = 'pixora_weather_cache_v3';
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 export class WeatherService {
@@ -71,7 +77,7 @@ export class WeatherService {
       // Fetch live weather from Open-Meteo
       const tempParam = unit === 'fahrenheit' ? '&temperature_unit=fahrenheit' : '';
       const weatherRes = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,is_day,weather_code${tempParam}`
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,is_day,weather_code&daily=sunrise,sunset&timezone=auto&forecast_days=1${tempParam}`
       );
       const data = await weatherRes.json();
 
@@ -89,6 +95,9 @@ export class WeatherService {
         isDay,
         timestamp: Date.now(),
         key: requestKey,
+        kind: this.kindOf(code),
+        sunrise: data.daily?.sunrise?.[0],
+        sunset: data.daily?.sunset?.[0],
       };
 
       await StorageService.set(CACHE_KEY, result);
@@ -125,6 +134,17 @@ export class WeatherService {
     });
   }
 
+  /** WMO weather code → coarse kind for the scenes. */
+  private static kindOf(code: number): WeatherKind {
+    if (code === 0) return 'clear';
+    if (code <= 3) return 'cloudy';
+    if (code === 45 || code === 48) return 'fog';
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
+    if (code >= 95) return 'storm';
+    return 'cloudy';
+  }
+
   private static mapWeatherCode(code: number, isDay: boolean): { condition: string; icon: string } {
     switch (code) {
       case 0:
@@ -142,6 +162,9 @@ export class WeatherService {
       case 61:
       case 63:
       case 65:
+      case 80:
+      case 81:
+      case 82:
         return { condition: 'Rain', icon: 'cloud-rain' };
       case 71:
       case 73:

@@ -20,6 +20,8 @@ export class FrogPond extends BaseEnvironment {
   public readonly id = 'frog-pond';
   public readonly preferredStyle = 'tiles' as const;
   public readonly backdrop = [hex('#0f2e28'), hex('#0b2622'), hex('#081c1a'), hex('#05120f')];
+  public readonly followsClock = true;
+  public readonly backdropDay = [hex('#1f5a4a'), hex('#1a4f42'), hex('#143f35'), hex('#0c2a24')];
 
   private wave = new WaveEquation2D();
   private noise = new SimplexNoise(5);
@@ -53,10 +55,12 @@ export class FrogPond extends BaseEnvironment {
       const a = (i / padCount) * Math.PI * 2 + Math.random() * 0.4;
       const rx = width * (0.32 + Math.random() * 0.12);
       const ry = height * (0.3 + Math.random() * 0.1);
+      const r = cw * (5 + Math.random() * 4);
+      const [px, py] = this.clearOfUI(width / 2 + Math.cos(a) * rx, height / 2 + Math.sin(a) * ry, r, ctx.safe, width, height);
       this.pads.push({
-        x: width / 2 + Math.cos(a) * rx,
-        y: height / 2 + Math.sin(a) * ry,
-        r: cw * (5 + Math.random() * 4),
+        x: px,
+        y: py,
+        r,
         notch: Math.random() * Math.PI * 2,
         flower: i % 3 === 0,
         ox: 0,
@@ -85,7 +89,8 @@ export class FrogPond extends BaseEnvironment {
       this.lastX = input.x;
       this.lastY = input.y;
     } else this.lastX = -1;
-    if (Math.random() < dt * 0.3) this.wave.addDisturbance(Math.random() * grid.cols, Math.random() * grid.rows, 1.6, 0.8);
+    const raining = ctx.weather === 'rain' || ctx.weather === 'storm';
+    if (Math.random() < dt * (raining ? 9 : 0.3)) this.wave.addDisturbance(Math.random() * grid.cols, Math.random() * grid.rows, raining ? 1.2 : 1.6, raining ? 1.1 : 0.8);
     this.wave.update();
 
     for (const p of this.pads) {

@@ -20,6 +20,8 @@ export class InteractiveWater extends BaseEnvironment {
   public readonly id = 'ripples';
   public readonly preferredStyle = 'tiles' as const;
   public readonly backdrop = [hex('#0b1533'), hex('#101d40'), hex('#0a1630'), hex('#050b1a')];
+  public readonly followsClock = true;
+  public readonly backdropDay = [hex('#3a6ea8'), hex('#4b80b8'), hex('#285b8a'), hex('#14365a')];
 
   private wave = new WaveEquation2D();
   private noise = new SimplexNoise(11);
@@ -136,6 +138,8 @@ export class InteractiveWater extends BaseEnvironment {
       this.raining = 8 + Math.random() * 10;
       this.rainTimer = 35 + Math.random() * 40;
     }
+    // Real rain where the user is keeps a shower going.
+    if (ctx.weather === 'rain' || ctx.weather === 'storm') this.raining = Math.max(this.raining, 2);
     if (this.raining > 0) this.raining -= dt;
     const rainRate = this.raining > 0 ? 28 * (width / 1440) : 0.6;
     const spawn = rainRate * dt;
@@ -190,7 +194,7 @@ export class InteractiveWater extends BaseEnvironment {
 
     // Sky: stars, moon, treeline.
     for (const s of this.stars) {
-      const a = 0.25 + 0.5 * (0.5 + 0.5 * Math.sin(t * 1.3 + s.p * 7));
+      const a = (0.25 + 0.5 * (0.5 + 0.5 * Math.sin(t * 1.3 + s.p * 7))) * (1 - ctx.sky.light);
       grid.put(s.c, s.r, s.g, hex('#dbe7ff'), a, Layer.SKY);
     }
     const mc = this.moonX / cw;
@@ -205,7 +209,8 @@ export class InteractiveWater extends BaseEnvironment {
           const limb = d / rad;
           const crater = this.noise.noise2D(c * 0.35, r * 0.8) > 0.3;
           const g = limb > 0.9 ? '▓' : '█';
-          grid.putChar(c, r, g, crater ? hex('#efe3b8') : hex('#fff8e2'), 1, Layer.MID);
+          const sun = ctx.sky.light > 0.5;
+          grid.putChar(c, r, g, sun ? (crater ? hex('#fde68a') : hex('#fef9c3')) : crater ? hex('#efe3b8') : hex('#fff8e2'), 1, Layer.MID);
         } else if (d < rad + 3) {
           grid.putChar(c, r, (c + r) % 2 ? '·' : '.', hex('#fff1c1'), 0.45 * (1 - (d - rad) / 3), Layer.SKY);
         }

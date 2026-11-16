@@ -16,6 +16,8 @@ export class UnderwaterWorld extends BaseEnvironment {
   public readonly id = 'underwater';
   public readonly preferredStyle = 'tiles' as const;
   public readonly backdrop = [hex('#0c3b5e'), hex('#082a47'), hex('#05182c'), hex('#030b17')];
+  public readonly followsClock = true;
+  public readonly backdropDay = [hex('#1f6f9c'), hex('#155a82'), hex('#0c3a5c'), hex('#06203a')];
 
   private noise = new SimplexNoise(42);
   private wake = new EnergyField();
@@ -161,7 +163,7 @@ export class UnderwaterWorld extends BaseEnvironment {
       const depthFade = Math.pow(1 - yn, 1.7);
       for (let c = 0; c < cols; c++) {
         const slant = c * 0.022 + r * 0.012;
-        const ray = Math.max(0, this.noise.noise2D(slant, t * 0.05)) ** 2 * 0.55;
+        const ray = Math.max(0, this.noise.noise2D(slant, t * 0.05)) ** 2 * 0.55 * (0.6 + ctx.sky.light * 0.8);
         light[r * cols + c] = ray * depthFade;
       }
     }

@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Cloud, Sun, Moon, CloudSun, CloudRain, CloudSnow, CloudLightning, MapPin } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { WeatherData, WeatherService } from '../../services/weatherService';
+import { useLiveStore } from '../../store/useLiveStore';
 
 export const WeatherWidget: React.FC = () => {
-  const { weatherCity, weatherUnits, useGeolocation, showWeather } = useSettingsStore();
+  const { weatherCity, weatherUnits, useGeolocation, showWeather, weatherLink, timeOfDay } = useSettingsStore();
+  const publish = useLiveStore((s) => s.setWeather);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!showWeather) return;
+    // Fetch when shown, or when the scenes use it (weather link / sunrise for time of day).
+    if (!showWeather && !weatherLink && !timeOfDay) return;
 
     let isMounted = true;
     setLoading(true);
@@ -17,6 +20,7 @@ export const WeatherWidget: React.FC = () => {
     WeatherService.getWeather(weatherCity, useGeolocation, weatherUnits).then((data) => {
       if (isMounted) {
         setWeather(data);
+        publish(data);
         setLoading(false);
       }
     });
@@ -24,7 +28,7 @@ export const WeatherWidget: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [weatherCity, weatherUnits, useGeolocation, showWeather]);
+  }, [weatherCity, weatherUnits, useGeolocation, showWeather, weatherLink, timeOfDay, publish]);
 
   if (!showWeather) return null;
 

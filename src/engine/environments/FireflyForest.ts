@@ -20,6 +20,8 @@ export class FireflyForest extends BaseEnvironment {
   public readonly id = 'firefly-forest';
   public readonly preferredStyle = 'tiles' as const;
   public readonly backdrop = [hex('#040d0b'), hex('#06140f'), hex('#081a13'), hex('#030907')];
+  public readonly followsClock = true;
+  public readonly backdropDay = [hex('#14302a'), hex('#1b3d33'), hex('#1c4034'), hex('#0d211b')];
 
   private noise = new SimplexNoise(77);
   private trunks: Trunk[] = [];
@@ -101,7 +103,7 @@ export class FireflyForest extends BaseEnvironment {
       const low = (r - rows * 0.55) / (rows * 0.45);
       for (let c = 0; c < cols; c++) {
         let v = this.noise.noise3D(c * 0.05 - t * (0.05 + this.gust * 0.6), r * 0.12, t * 0.05) * 0.5 + 0.5;
-        v = Math.max(0, v - 0.45) * 1.4 * low;
+        v = Math.max(0, v - (ctx.weather === 'fog' ? 0.3 : 0.45)) * (ctx.weather === 'fog' ? 1.9 : 1.4) * low;
         const d = Math.hypot(c - mx, (r - my) / grid.aspect);
         if (d < 10) v *= d / 10;
         this.mist[r * cols + c] = v;

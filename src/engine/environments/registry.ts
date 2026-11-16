@@ -10,6 +10,11 @@ import { WinterPines } from './WinterPines';
 import { FireflyForest } from './FireflyForest';
 import { RainyCity } from './RainyCity';
 import { CurlFlow } from '../flows/CurlFlow';
+import { MagneticFlow } from '../flows/MagneticFlow';
+import { WindFlow } from '../flows/WindFlow';
+import { AttractorFlow } from '../flows/AttractorFlow';
+import { ContoursFlow } from '../flows/ContoursFlow';
+import { VortexFlow } from '../flows/VortexFlow';
 import { FishSchool } from '../animals/FishSchool';
 import { Fireflies } from '../animals/Fireflies';
 import { Butterflies } from '../animals/Butterflies';
@@ -69,6 +74,16 @@ export function createEnvironment(id: EnvironmentId): IEnvironment {
     // Flows
     case 'curl':
       return new CurlFlow();
+    case 'magnetic':
+      return new MagneticFlow();
+    case 'wind':
+      return new WindFlow();
+    case 'attractor':
+      return new AttractorFlow();
+    case 'contours':
+      return new ContoursFlow();
+    case 'vortex':
+      return new VortexFlow();
     case 'underwater':
     default:
       return new UnderwaterWorld();

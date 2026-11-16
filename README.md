@@ -37,7 +37,16 @@ Pixora shows one of three kinds of scene. Switch with the three icons in the bot
 
 Each animal has a **Tweaks** panel (sliders icon in the bottom bar): how many, size, speed, depth range, haze, plus its own knobs. Double-click a label to reset it; "Copy changes" exports your values.
 
-**Flows:** Curl Currents (more flow types coming).
+**Flows** (fine Braille-dot line art):
+
+| Flow | What it is | Play with it |
+| :--- | :--- | :--- |
+| Curl Currents | particles on swirling curl noise | hover for a vortex · click for a shockwave |
+| Magnetic Lines | field lines between drifting poles | your pointer is a pole · click flips its charge |
+| Wind Map | westerlies with drifting highs (H) and lows (L) | move fast for a gust · click spawns a storm |
+| Strange Attractor | a slowly morphing Clifford attractor | move to bend it · click glides to a new shape |
+| Contours | moving topographic lines with index contours | your pointer raises a hill · click leaves one |
+| Vortex Street | swirls shed behind posts (Kármán street) | move to shed swirls · click plants a post |
 
 **Layering** (Settings → *Layer an animal over worlds*) puts an animal on top of a world. Only animals that belong there are allowed: koi need open water, cranes need sky, fireflies need a warm night. Animals that don't fit are greyed out with the reason. Each world tells layered animals where its sky, water and ground are.
 

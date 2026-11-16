@@ -156,11 +156,36 @@ export const CATALOG: SceneMeta[] = [
     description: 'Particles follow a smooth, divergence-free flow and leave fine dot trails. The palette drifts between moods.',
     interactions: 'Hover to stir a vortex · click to send out a shockwave',
   },
-  { id: 'magnetic', kind: 'flow', name: 'Magnetic Lines', short: 'Magnetic', accent: '#93c5fd', ready: false, tagline: 'Field lines between moving poles', description: '', interactions: '' },
-  { id: 'wind', kind: 'flow', name: 'Wind Map', short: 'Wind', accent: '#a7f3d0', ready: false, tagline: 'Streamlines over drifting weather', description: '', interactions: '' },
-  { id: 'attractor', kind: 'flow', name: 'Strange Attractor', short: 'Attractor', accent: '#fcd34d', ready: false, tagline: 'A slowly morphing attractor', description: '', interactions: '' },
-  { id: 'contours', kind: 'flow', name: 'Contours', short: 'Contours', accent: '#fdba74', ready: false, tagline: 'Moving topographic lines', description: '', interactions: '' },
-  { id: 'vortex', kind: 'flow', name: 'Vortex Street', short: 'Vortex', accent: '#c4b5fd', ready: false, tagline: 'Swirls shed behind your pointer', description: '', interactions: '' },
+  {
+    id: 'magnetic', kind: 'flow', name: 'Magnetic Lines', short: 'Magnetic', accent: '#93c5fd', ready: true,
+    tagline: 'Field lines between drifting poles',
+    description: 'Dots leave the + poles and follow the field into the − poles, tracing living magnetic field lines.',
+    interactions: 'Your pointer is a pole · click to flip its charge',
+  },
+  {
+    id: 'wind', kind: 'flow', name: 'Wind Map', short: 'Wind', accent: '#a7f3d0', ready: true,
+    tagline: 'Streamlines over drifting weather',
+    description: 'A weather-map wind field: a wavy westerly with drifting highs (H) and lows (L) spinning the air.',
+    interactions: 'Move fast to stir up a gust · click to spawn a storm',
+  },
+  {
+    id: 'attractor', kind: 'flow', name: 'Strange Attractor', short: 'Attractor', accent: '#fcd34d', ready: true,
+    tagline: 'A slowly morphing strange attractor',
+    description: 'A Clifford attractor drawn from thousands of points a frame; its parameters drift so the shape breathes and morphs.',
+    interactions: 'Move the pointer to bend its shape · click to glide to a new one',
+  },
+  {
+    id: 'contours', kind: 'flow', name: 'Contours', short: 'Contours', accent: '#fdba74', ready: true,
+    tagline: 'Moving topographic lines',
+    description: 'A slowly shifting landscape drawn as one-dot-thin contour lines, with brighter index contours.',
+    interactions: 'Your pointer raises a hill · click to leave one that slowly settles',
+  },
+  {
+    id: 'vortex', kind: 'flow', name: 'Vortex Street', short: 'Vortex', accent: '#c4b5fd', ready: true,
+    tagline: 'Swirls shed behind posts and your pointer',
+    description: 'A current flows past round posts that shed swirls alternately from each side: a Kármán vortex street.',
+    interactions: 'Move the pointer to shed swirls · click to plant a new post',
+  },
 ];
 
 export const KIND_LABEL: Record<SceneKind, string> = { world: 'Worlds', animal: 'Animals', flow: 'Flows' };

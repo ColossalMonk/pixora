@@ -9,6 +9,7 @@ import { Meadow } from './Meadow';
 import { WinterPines } from './WinterPines';
 import { FireflyForest } from './FireflyForest';
 import { RainyCity } from './RainyCity';
+import { ImageWorld } from './ImageWorld';
 import { CurlFlow } from '../flows/CurlFlow';
 import { MagneticFlow } from '../flows/MagneticFlow';
 import { WindFlow } from '../flows/WindFlow';
@@ -50,6 +51,8 @@ export function createEnvironment(id: EnvironmentId): IEnvironment {
       return new FireflyForest();
     case 'rainy-city':
       return new RainyCity();
+    case 'your-image':
+      return new ImageWorld();
     // Animals
     case 'fish':
       return new FishSchool();

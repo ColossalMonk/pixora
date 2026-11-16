@@ -4,7 +4,8 @@ import { CharacterStyle, ColorTheme } from '../types/engine';
 import { AnimalId, EnvironmentId, FlowId, SceneKind, WorldId } from '../types/environment';
 import { StorageService } from '../services/storageService';
 import { migrateStyle } from '../engine/core/Charsets';
-import { READY_IDS, animalsFor, fits } from '../data/catalog';
+import { READY_IDS, ROTATION_IDS, animalsFor, fits } from '../data/catalog';
+import { DEFAULT_WALLPAPER } from '../engine/environments/ImageWorld';
 
 const SETTINGS_KEY = 'pixora_user_settings_v1';
 
@@ -26,6 +27,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   keepFlow: false,
   animalTweaks: {},
   timeOfDay: true,
+  wallpaper: { ...DEFAULT_WALLPAPER },
   weatherLink: true,
   characterStyle: 'auto',
   colorTheme: 'true-color',
@@ -168,7 +170,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
     const today = localDate();
     if (combined.dailyEnvironmentRotation && combined.lastRotationDate !== today) {
-      if (!combined.keepWorld) combined.activeWorld = pickForDate(today, READY_IDS('world') as WorldId[], combined.activeWorld, 0);
+      if (!combined.keepWorld && combined.activeWorld !== 'your-image') combined.activeWorld = pickForDate(today, ROTATION_IDS('world') as WorldId[], combined.activeWorld, 0);
       if (!combined.keepFlow) combined.activeFlow = pickForDate(today, READY_IDS('flow') as FlowId[], combined.activeFlow, 3);
       if (!combined.keepAnimal) {
         // When layering, only rotate among animals that fit today's world.

@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Engine } from '../../engine/core/Engine';
 import { sceneFor, useSettingsStore } from '../../store/useSettingsStore';
 import { useLiveStore } from '../../store/useLiveStore';
+import { Wallpaper } from '../../engine/environments/ImageWorld';
+import { onWallpaperChange, restoreWallpaper } from '../worlds/wallpaperActions';
 
 interface AsciiCanvasProps {
   /** Element whose box the art should fade behind (clock + search + shortcuts). */
@@ -22,6 +24,7 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef }) => {
     animalTweaks,
     timeOfDay,
     weatherLink,
+    wallpaper,
     characterStyle,
     colorTheme,
     fontSize,
@@ -67,6 +70,21 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef }) => {
   useEffect(() => {
     engineRef.current?.setTunings(animalTweaks);
   }, [animalTweaks]);
+
+  // Your Image: restore the saved picture once, and re-seed when it or its options change.
+  useEffect(() => {
+    if (!isLoaded) return;
+    const off = onWallpaperChange(() => engineRef.current?.refreshScene());
+    restoreWallpaper();
+    return () => {
+      off();
+    };
+  }, [isLoaded]);
+  useEffect(() => {
+    Wallpaper.configure(wallpaper);
+    if (sceneKind === 'world' && activeWorld === 'your-image') engineRef.current?.refreshScene();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wallpaper]);
 
   const weather = useLiveStore((s) => s.weather);
   useEffect(() => {

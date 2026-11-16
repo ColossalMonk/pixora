@@ -20,6 +20,8 @@ Pixora shows one of three kinds of scene. Switch with the three icons in the bot
 
 **Worlds** (scenery): Deep Ocean · Moonlit Lake · Lily Pond · Northern Lights · Campfire · Zen Garden · Dusk Meadow · Winter Pines · Night Forest · Rainy City.
 
+**Your Image:** drop any picture anywhere on the page (or use the image button in the bottom bar) and it becomes a living ASCII wallpaper: tiles, characters, Braille or half-blocks, in full colour, mono, matrix or amber, with brightness, contrast, gamma and dimming. Pointer effects: ripple (the picture refracts through water), repel (it bulges away from the pointer), reveal lens (true colours under the pointer), drift (gentle parallax) or still. The picture is kept in the browser's local storage (IndexedDB) and never leaves your computer. When nothing moves, the wallpaper stops redrawing to save battery.
+
 **Animals** (after [ascii-animals](https://github.com/DesignerStephen1/ascii-animals)):
 
 | Animal | Behaviour |

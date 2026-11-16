@@ -10,6 +10,7 @@ import { ImageConverterModal } from './components/converter/ImageConverterModal'
 import { SettingsDrawer } from './components/settings/SettingsDrawer';
 import { useSettingsStore } from './store/useSettingsStore';
 import { WorldBar } from './components/worlds/WorldBar';
+import { setWallpaperFile } from './components/worlds/wallpaperActions';
 import { scenesOf } from './data/catalog';
 import { activeOf } from './store/useSettingsStore';
 import { Compass, Image as ImageIcon, Sliders } from 'lucide-react';
@@ -27,6 +28,26 @@ export const App: React.FC = () => {
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  // Drop a picture anywhere on the page to make it the wallpaper (Your Image).
+  useEffect(() => {
+    const over = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+    };
+    const drop = (e: DragEvent) => {
+      if (e.defaultPrevented) return; // e.g. ASCII Studio handled it
+      const f = Array.from(e.dataTransfer?.files ?? []).find((x) => x.type.startsWith('image/'));
+      if (!f) return;
+      e.preventDefault();
+      setWallpaperFile(f);
+    };
+    window.addEventListener('dragover', over);
+    window.addEventListener('drop', drop);
+    return () => {
+      window.removeEventListener('dragover', over);
+      window.removeEventListener('drop', drop);
+    };
+  }, []);
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#08080a] text-slate-100 font-sans select-none">

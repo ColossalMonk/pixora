@@ -77,6 +77,14 @@ export const CATALOG: SceneMeta[] = [
     traits: { water: 'none', sky: true, ground: false, flowers: false, season: 'cold', time: 'night' },
   },
 
+  {
+    id: 'your-image', kind: 'world', name: 'Your Image', short: 'Image', accent: '#e2e8f0', ready: true, noRotate: true,
+    tagline: 'Your own picture as a living ASCII wallpaper',
+    description: 'Upload any picture: it becomes tiles, characters, Braille or blocks, with a pointer effect. It stays on your computer.',
+    interactions: 'Move over it for the chosen effect (ripple, repel, reveal lens or drift) · click for a splash',
+    traits: { water: 'none', sky: true, ground: true, flowers: true, season: 'any', time: 'any' },
+  },
+
   // ───────────── Animals ─────────────
   {
     id: 'fish', kind: 'animal', name: 'Fish School', short: 'Fish', accent: '#5eead4', ready: true,
@@ -204,6 +212,9 @@ export function scenesOf(kind: SceneKind): SceneMeta[] {
 }
 
 export const READY_IDS = (kind: SceneKind): EnvironmentId[] => scenesOf(kind).map((s) => s.id);
+
+/** Scenes daily rotation may pick (skips personal ones like Your Image). */
+export const ROTATION_IDS = (kind: SceneKind): EnvironmentId[] => scenesOf(kind).filter((s) => !s.noRotate).map((s) => s.id);
 
 // ───────────── Layering rules ─────────────
 

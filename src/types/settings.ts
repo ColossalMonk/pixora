@@ -1,5 +1,6 @@
 import { CharacterStyle, ColorTheme, PerformanceTier } from './engine';
 import { AnimalId, FlowId, SceneKind, WorldId } from './environment';
+import type { WallpaperOptions } from '../engine/environments/ImageWorld';
 
 export interface ShortcutItem {
   id: string;
@@ -31,6 +32,8 @@ export interface UserSettings {
   keepFlow: boolean;
   /** Tweaks-panel values per animal (only changed knobs are stored). */
   animalTweaks: Record<string, Record<string, number>>;
+  /** Your Image: style, colour, effect and tone. */
+  wallpaper: WallpaperOptions;
   /** Worlds shift with the local time of day. */
   timeOfDay: boolean;
   /** Worlds react to the real weather (rain, snow, fog, storms). */

@@ -60,18 +60,21 @@ export interface AsciiResult {
 /** Monospace cell aspect (width / height) used to keep proportions. */
 export const CELL_ASPECT = 0.5;
 
-export async function loadImage(source: File | Blob): Promise<HTMLImageElement> {
-  const url = URL.createObjectURL(source);
-  try {
+export function loadImage(source: File | Blob): Promise<HTMLImageElement> {
+  // onload (not img.decode()): decode() never settles in background tabs.
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(source);
     const img = new Image();
-    img.decoding = 'async';
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Could not read that image'));
+    };
     img.src = url;
-    await img.decode();
-    return img;
-  } finally {
-    // Safe to revoke after decode; the bitmap stays in memory.
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-  }
+  });
 }
 
 function sample(img: HTMLImageElement, w: number, h: number): Uint8ClampedArray {
@@ -97,7 +100,7 @@ function sample(img: HTMLImageElement, w: number, h: number): Uint8ClampedArray 
 }
 
 /** Luminance 0..1 per pixel with auto-levels + tone controls applied. */
-function tone(data: Uint8ClampedArray, n: number, o: ConvertOptions): Float32Array {
+export function tone(data: Uint8ClampedArray, n: number, o: Pick<ConvertOptions, 'brightness' | 'contrast' | 'gamma' | 'invert'>): Float32Array {
   const lum = new Float32Array(n);
   const hist = new Uint32Array(256);
   for (let i = 0; i < n; i++) {
@@ -131,7 +134,7 @@ function tone(data: Uint8ClampedArray, n: number, o: ConvertOptions): Float32Arr
 const pack = (r: number, g: number, b: number) => ((r & 255) << 16) | ((g & 255) << 8) | (b & 255);
 
 /** Colour for a cell, by colour mode. `v` is the toned luminance. */
-function cellColor(r: number, g: number, b: number, v: number, mode: ColorMode): number {
+export function cellColor(r: number, g: number, b: number, v: number, mode: ColorMode): number {
   switch (mode) {
     case 'mono': {
       const k = 90 + v * 165;

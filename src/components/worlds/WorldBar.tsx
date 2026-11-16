@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Pin, PinOff, Info, Mountain, Bird, Wind, Layers, SlidersHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pin, PinOff, Info, Mountain, Bird, Wind, Layers, SlidersHorizontal, Image as ImageIcon } from 'lucide-react';
 import { TweaksPanel } from './TweaksPanel';
+import { WallpaperPanel } from './WallpaperPanel';
 import { KEEP_KEY, activeOf, sceneFor, useSettingsStore } from '../../store/useSettingsStore';
 import { KIND_LABEL, sceneMeta } from '../../data/catalog';
 import { SceneKind } from '../../types/environment';
@@ -27,6 +28,8 @@ export const WorldBar: React.FC = () => {
   const [hintVisible, setHintVisible] = useState(true);
   const [tweaksOpen, setTweaksOpen] = useState(false);
   const tweakTarget = sceneKind === 'animal' ? currentId : scene.overlay;
+  const imageWorld = sceneKind === 'world' && currentId === 'your-image';
+  const [wallpaperOpen, setWallpaperOpen] = useState(false);
 
   useEffect(() => {
     setHintVisible(true);
@@ -82,6 +85,17 @@ export const WorldBar: React.FC = () => {
           <button type="button" onClick={() => cycleScene(1)} className="p-1.5 rounded-full hover:bg-white/10 text-slate-300" aria-label="Next">
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
+          {imageWorld && (
+            <button
+              type="button"
+              onClick={() => setWallpaperOpen((v) => !v)}
+              className={`p-1.5 rounded-full ${wallpaperOpen ? 'bg-white/15 text-white' : 'text-slate-300 hover:bg-white/10'}`}
+              aria-label="Wallpaper settings"
+              title="Your Image settings"
+            >
+              <ImageIcon className="w-3.5 h-3.5" />
+            </button>
+          )}
           {tweakTarget && (
             <button
               type="button"
@@ -114,6 +128,7 @@ export const WorldBar: React.FC = () => {
         </div>
       </div>
       {tweaksOpen && tweakTarget && <TweaksPanel animalId={tweakTarget} onClose={() => setTweaksOpen(false)} />}
+      {wallpaperOpen && imageWorld && <WallpaperPanel onClose={() => setWallpaperOpen(false)} />}
     </>
   );
 };

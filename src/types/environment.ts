@@ -15,7 +15,8 @@ export type WorldId =
   | 'meadow'
   | 'winter-pines'
   | 'firefly-forest'
-  | 'rainy-city';
+  | 'rainy-city'
+  | 'your-image';
 
 export type AnimalId =
   | 'butterflies'
@@ -68,6 +69,8 @@ export interface SceneMeta {
   accent: string;
   /** Built and selectable. Planned scenes stay hidden until they ship. */
   ready: boolean;
+  /** Left out of daily rotation (personal scenes like Your Image). */
+  noRotate?: boolean;
   traits?: WorldTraits;
   needs?: AnimalNeeds;
 }
@@ -144,6 +147,8 @@ export interface IEnvironment {
   readonly backdropDay?: number[];
   /** Animals: which part of a world they live in when layered. */
   readonly zone?: Zone;
+  /** True when nothing would change on screen; the engine may skip redrawing. */
+  idle?(): boolean;
   /** Animals: apply Tweaks-panel values. */
   tune?(values: Record<string, number> | undefined): void;
   destroy?(): void;

@@ -150,6 +150,7 @@ export class Engine {
       if (this.overlay && this.width > 0) this.overlay.init(this.context(this.overlay, true));
     }
     this.accumulator = 0;
+    this.dirty = true;
     if (this.width > 0) {
       this.prepareBackdrop();
       if (this.isStill()) this.renderStill();
@@ -192,6 +193,7 @@ export class Engine {
     this.sky = sky;
     if (key === this.skyKey && !force) return;
     this.skyKey = key;
+    this.dirty = true;
     this.rasterizer.setGrade(follows ? (c) => grade(c, sky) : null);
     this.prepareBackdrop();
   }
@@ -210,6 +212,18 @@ export class Engine {
         else if (env === this.overlay) env.init(this.context(env, true));
       }
     }
+  }
+
+  /** Forces the next frame to draw even if the scene is idle. */
+  private dirty = true;
+
+  /** Re-seeds the current scene (e.g. after the wallpaper image or its options change). */
+  public refreshScene(): void {
+    if (!this.active || this.width === 0) return;
+    this.active.init(this.context(this.active, false));
+    this.overlay?.init(this.context(this.overlay, true));
+    this.dirty = true;
+    if (this.isStill()) this.renderStill();
   }
 
   /** Copies the current frame (backdrop included) so it can fade out over the next scene. */
@@ -231,6 +245,7 @@ export class Engine {
   public updateConfig(next: Partial<EngineConfig>): void {
     const prev = this.config;
     this.config = { ...prev, ...next };
+    this.dirty = true;
     this.input.intensity = this.config.interactionIntensity;
     if (
       prev.fontSize !== this.config.fontSize ||
@@ -253,6 +268,7 @@ export class Engine {
     const prev = this.focusRect;
     this.focusRect = rect;
     this.grid.setFocusRect(rect, this.config.calmCenter);
+    this.dirty = true;
     const moved = !prev || !rect || Math.abs(prev.x - rect.x) + Math.abs(prev.y - rect.y) + Math.abs(prev.w - rect.w) + Math.abs(prev.h - rect.h) > 80;
     if (moved && rect && this.active && this.width > 0) {
       this.active.resize(this.context(this.active, false));
@@ -288,6 +304,7 @@ export class Engine {
     const changed = cols !== this.grid.cols || rows !== this.grid.rows || Math.abs(cellW - this.grid.cellWidth) > 0.01;
     this.grid.resize(cols, rows, cellW, cellH);
     this.grid.setFocusRect(this.focusRect, this.config.calmCenter);
+    this.dirty = true;
     this.prepareBackdrop();
     if (this.active && changed) {
       this.active.resize(this.context(this.active, false));
@@ -413,7 +430,12 @@ export class Engine {
     }
     if (steps === MAX_STEPS) this.accumulator = 0;
 
-    this.draw(ctx, octx);
+    // A still scene (e.g. Your Image with no pointer) keeps its last frame.
+    const idle = !this.dirty && !this.fadeCanvas && !this.overlay && !!this.active.idle?.();
+    if (!idle) {
+      this.draw(ctx, octx);
+      this.dirty = false;
+    }
     this.adapt(performance.now() - t0);
   };
 

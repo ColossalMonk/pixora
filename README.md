@@ -10,7 +10,7 @@
 ```
 
 > **Pixora** transforms the standard browser New Tab into an ambient, living digital sanctuary.  
-> Living ASCII scenes (10 worlds, 10 animals and flowing fields) drawn on a canvas, with a calm clock, search and shortcuts on top. Something new every day, or keep your favourite forever.
+> Living ASCII scenes (10 worlds, 10 animals, 6 flows, and your own picture) drawn on a canvas, with a calm clock, search and shortcuts on top. Something new every day, or keep your favourite forever.
 
 ---
 
@@ -74,7 +74,7 @@ Each animal has a **Tweaks** panel (sliders icon in the bottom bar): how many, s
 - Weather from Open-Meteo. With no city set, Pixora uses your time zone's city (no location prompt). With *Use my location* on, the place name comes from BigDataCloud's free reverse geocoder.
 - ASCII Studio: drop, paste or pick an image. Render as Characters, Braille (Atkinson-dithered) or Blocks (half-block pixels), in full colour, mono, matrix or amber, with auto-levels plus brightness/contrast/gamma. Compare with the original, copy text, or export `.txt` / `.png`.
 
-All fonts are bundled locally. The only network calls are weather and shortcut favicons.
+All fonts are bundled locally. The only network calls are weather (Open-Meteo, plus BigDataCloud only if you turn on *Use my location*) and shortcut favicons. Your wallpaper picture never leaves your computer.
 
 ## Installation & Setup
 
@@ -135,7 +135,8 @@ Preview at `http://localhost:5173`.
 ## How it works (short version)
 
 - A plain TypeScript engine (`src/engine`) runs outside React: fixed 60 Hz simulation steps (so speed is the same on 60/120/144 Hz screens), one render per frame, paused when the tab is hidden.
-- Worlds write into a typed-array character grid with depth layers, so near creatures always cover far ones.
+- Scenes (worlds, animals, flows) write into a typed-array character grid with depth layers, so near creatures always cover far ones. An animal can be layered over a world; each world tells it where its sky, water and ground are.
+- Worlds follow your local sunrise/sunset and the live weather; a still scene (Your Image with no pointer) stops redrawing.
 - The rasterizer groups cells by colour and opacity (a handful of state changes per frame instead of thousands); Braille is drawn as dot rectangles; the backdrop gradient is CSS behind a transparent canvas.
 - Performance tier *Auto* drops to 30 fps, then to a coarser grid, if a machine struggles.
 

@@ -52,7 +52,7 @@ export class AttractorFlow extends FlowBase {
     const py = ptr ? ptr[1] / this.rowsIso - 0.5 : 0;
     for (let k = 0; k < 4; k++) {
       const drift = Math.sin(this.time * (0.05 + k * 0.013) + k * 1.7) * 0.12;
-      const bend = (k % 2 ? py : px) * 0.35 * ctx.input.intensity;
+      const bend = (k % 2 ? py : px) * 0.2 * ctx.input.intensity;
       this.target[k] = this.base[k] + drift + bend;
       this.p[k] += (this.target[k] - this.p[k]) * Math.min(1, dt * 0.8);
     }
@@ -65,6 +65,7 @@ export class AttractorFlow extends FlowBase {
     const cy = this.dotH / 2;
     const w = this.walkers;
     const per = Math.max(1, Math.floor(this.iterations / (w.length / 2)));
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (let j = 0; j < w.length; j += 2) {
       let x = w[j];
       let y = w[j + 1];
@@ -77,9 +78,29 @@ export class AttractorFlow extends FlowBase {
       }
       w[j] = x;
       w[j + 1] = y;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    // Some parameter sets collapse to a fixed point or a tiny cycle: steer back to a known chaotic shape.
+    if (maxX - minX < 0.3 || maxY - minY < 0.3) {
+      this.base = [-1.4, 1.6, 1.0, 0.7];
+      for (let i = 0; i < w.length; i++) w[i] = Math.random() * 2 - 1;
     }
     this.fadeInk(dt);
+    // Too few lit dots for a while (a thin cycle): glide back to the default shape.
+    let lit = 0;
+    const ink = this.dots;
+    for (let i = 0; i < ink.length; i += 4) if (ink[i] > 0.22) lit++;
+    this.sparse = lit * 4 < ink.length * 0.012 ? this.sparse + dt : 0;
+    if (this.sparse > 1.5) {
+      this.sparse = 0;
+      this.base = [-1.4, 1.6, 1.0, 0.7];
+    }
   }
+
+  private sparse = 0;
 
   public render(ctx: WorldContext): void {
     this.renderInk(ctx, 0.22, 0.2, 0.8);

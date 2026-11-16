@@ -10,27 +10,38 @@
 ```
 
 > **Pixora** transforms the standard browser New Tab into an ambient, living digital sanctuary.  
-> Eleven living ASCII worlds drawn on a canvas, with a calm clock, search and shortcuts on top. A new world every day, or keep the one you love forever.
+> Living ASCII scenes (10 worlds, 10 animals and flowing fields) drawn on a canvas, with a calm clock, search and shortcuts on top. Something new every day, or keep your favourite forever.
 
 ---
 
-## The worlds
+## Worlds, Animals and Flows
 
-| World | What lives there | Play with it |
-| :--- | :--- | :--- |
-| **Underwater World** | Fish schools in three depth layers, big curious fish, pulsing jellyfish with soft tentacles, kelp, coral, light shafts and caustics | Hold the pointer still and big fish come to look · move fast and schools scatter · click for a bubble burst |
-| **Moonlit Lake** | Wave simulation lit by the moon, a shimmering moon path, pine treeline, drifting petals, fireflies, passing rain showers | Drag across the water for a wake · click for a drop · click the sky to call rain |
-| **Frog Pond** | Frogs that breathe, blink, leap between free lily pads, swim back and catch dragonflies; koi below the surface; reeds | Click the water to drop food for the koi · get close and frogs leap away |
-| **Northern Lights** | Two aurora curtains of vertical rays over sharp ridges, mirrored in a lake; stars and meteors | Move to push the curtains · click for a flare and a shooting star |
-| **Flow Fields** | Particles riding curl noise, leaving fine Braille-dot trails; the palette drifts between moods | Hover to stir a vortex · click for a shockwave |
-| **Campfire** | A heat-simulation fire with sparks, firelit trees and stars | Move to either side to lean the flames · click to send up sparks |
-| **Zen Garden** | Raked sand that rings each mossy stone, drifting petals | Hold and drag to rake · click to press rings · raking settles back over ~90 s |
-| **Butterfly Meadow** | Dusk hills, a low sun, flowers and butterflies that rest and wander | Hold still and they come close · move fast and they scatter · click for more |
-| **Winter Pines** | Snow in three depths over snowy pines; it gathers on the ground | Sweep for gusts · click for a strong gust |
-| **Firefly Forest** | Fireflies that gradually synchronise their flashing (Kuramoto model) | Hold still and they gather · click to flash them all |
-| **Rainy City** | City lights through a rainy window; drops bead, grow and slide | Drag to wipe the glass · click for lightning |
+Pixora shows one of three kinds of scene. Switch with the three icons in the bottom bar or the tabs in **Worlds** (top right).
 
-**Daily rotation:** a new world each day at your local midnight. Flip **Keep this forever** (bottom right) to pin the one you're on. The arrows next to it switch worlds by hand, and **Worlds** (top right) shows live previews of all of them.
+**Worlds** (scenery): Deep Ocean · Moonlit Lake · Lily Pond · Northern Lights · Campfire · Zen Garden · Dusk Meadow · Winter Pines · Night Forest · Rainy City.
+
+**Animals** (after [ascii-animals](https://github.com/DesignerStephen1/ascii-animals)):
+
+| Animal | Behaviour |
+| :--- | :--- |
+| Butterflies | flutter and glide; curious about a still pointer, scatter from a fast one |
+| Koi | five varieties; meander, bend and swish; click to drop food |
+| Jellyfish | pulse upward trailing tentacles; click to make them shoot away |
+| Dragonflies | dart, hover, dart; flee when you get close |
+| Frogs | sit, blink, leap to a clear spot with a splash; watch your pointer |
+| Cranes | slow V formations; click to startle them into a climb |
+| Crabs | scuttle sideways, wave claws, tuck in when you come close |
+| Fireflies | flash, then gradually synchronise; click to flash them all |
+| Fish School | flocks at three depths; scatter and startle |
+| Starlings | a murmuration that bends around the pointer |
+
+Each animal has a **Tweaks** panel (sliders icon in the bottom bar): how many, size, speed, depth range, haze, plus its own knobs. Double-click a label to reset it; "Copy changes" exports your values.
+
+**Flows:** Curl Currents (more flow types coming).
+
+**Layering** (Settings → *Layer an animal over worlds*) puts an animal on top of a world. Only animals that belong there are allowed: koi need open water, cranes need sky, fireflies need a warm night. Animals that don't fit are greyed out with the reason. Each world tells layered animals where its sky, water and ground are.
+
+**Daily rotation:** the world, animal and flow each change at your local midnight. Each has its own **Keep this forever** pin (bottom right; it pins whichever category you're viewing). Switching scenes crossfades.
 
 ## Look & feel
 

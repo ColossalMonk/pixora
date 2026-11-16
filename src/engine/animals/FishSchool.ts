@@ -5,6 +5,7 @@ import { EnergyField } from '../physics/EnergyField';
 import { Layer } from '../core/RenderGrid';
 import { gradientLUT, hex, mix, scale } from '../core/Color';
 import { renderField } from '../draw/Field';
+import { Knob } from './kit';
 
 const SPECIES = [
   { right: '><>', left: '<><', color: hex('#5eead4') },
@@ -20,6 +21,10 @@ const SPECIES = [
  */
 export class FishSchool extends AnimalBase {
   public readonly id = 'fish';
+  public readonly zone = 'any' as const;
+  public static knobs: Knob[] = [
+    { key: 'schooling', label: 'Schooling', min: 0.2, max: 2.5, step: 0.05, value: 1, hint: 'How tightly they school together.' },
+  ];
   private boids = new BoidsSystem();
   private species = new Uint8Array(0);
   private wake = new EnergyField();
@@ -30,8 +35,9 @@ export class FishSchool extends AnimalBase {
     const w = habitat.right - habitat.left;
     const h = habitat.bottom - habitat.top;
     const area = (w * h) / (1440 * 900);
-    const count = Math.round(Math.min(110, 50 * area * quality + 12));
-    this.boids.reset(count, habitat.right, habitat.bottom, (i) => (i % 5 === 0 ? 0.85 + Math.random() * 0.15 : i % 2 ? 0.15 + Math.random() * 0.3 : 0.5 + Math.random() * 0.25));
+    const count = Math.round(Math.min(160, (50 * area * quality + 12) * this.k('density')));
+    const far = this.k('farthest');
+    this.boids.reset(count, habitat.right, habitat.bottom, (i) => far + (1 - far) * (i % 5 === 0 ? 0.85 + Math.random() * 0.15 : i % 2 ? 0.15 + Math.random() * 0.3 : 0.5 + Math.random() * 0.25));
     this.boids.minX = habitat.left;
     this.boids.minY = habitat.top;
     // Re-seed inside the habitat.
@@ -51,6 +57,8 @@ export class FishSchool extends AnimalBase {
       this.boids.startle(c.x, c.y, 260 * input.intensity, 420 * input.intensity);
       this.wake.stamp(c.x / grid.cellWidth, c.y / grid.cellHeight, 6, 1.4);
     }
+    this.boids.params.maxSpeed = 130 * this.k('speed');
+    this.boids.params.neighbor = 70 * this.k('schooling');
     const pointer = input.active && input.intensity > 0;
     this.boids.update(dt, pointer ? input.x : NaN, input.y, input.intensity);
     for (let i = 0; i < this.boids.count; i += 2) {
@@ -66,14 +74,14 @@ export class FishSchool extends AnimalBase {
     const cw = grid.cellWidth;
     const ch = grid.cellHeight;
     renderField(grid, this.wake.values, { style, lut: this.wakeLut, layer: Layer.FAR, threshold: 0.12, minAlpha: 0.08, alphaGain: 0.35 });
-    const fog = layered ? hex('#0a2f4a') : hex('#0b0c12');
+    const fog = layered ? ctx.bg : hex('#0b0c12');
     for (let i = 0; i < this.boids.count; i++) {
       const d = this.boids.depth[i];
       const right = this.boids.vx[i] >= 0;
       const sp = SPECIES[this.species[i]];
       const col = Math.floor(this.boids.x[i] / cw);
       const row = Math.floor(this.boids.y[i] / ch);
-      const color = mix(sp.color, fog, (1 - d) * 0.65);
+      const color = mix(sp.color, fog, (1 - d) * this.k('fog'));
       const alpha = 0.35 + d * 0.65;
       if (d < 0.45) {
         grid.putChar(col, row, right ? '›' : '‹', color, alpha, Layer.FAR);

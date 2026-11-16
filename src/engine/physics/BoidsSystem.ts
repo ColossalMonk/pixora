@@ -11,6 +11,9 @@ export interface BoidParams {
   neighbor: number; // px
   avoidRadius: number; // px
   avoidForce: number; // px/s²
+  /** Distance within which the optional attract point pulls (px). */
+  attractRadius?: number;
+  attractForce?: number;
 }
 
 export class BoidsSystem {
@@ -177,9 +180,9 @@ export class BoidsSystem {
         const dx = attractX - xi;
         const dy = attractY - yi;
         const d = Math.hypot(dx, dy);
-        if (d > 4 && d < 420) {
-          fx += (dx / d) * 160;
-          fy += (dy / d) * 160;
+        if (d > 4 && d < (p.attractRadius ?? 420)) {
+          fx += (dx / d) * (p.attractForce ?? 160);
+          fy += (dy / d) * (p.attractForce ?? 160);
         }
       }
       // Soft walls

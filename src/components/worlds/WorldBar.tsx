@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Pin, PinOff, Info, Mountain, Bird, Wind, Layers } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pin, PinOff, Info, Mountain, Bird, Wind, Layers, SlidersHorizontal } from 'lucide-react';
+import { TweaksPanel } from './TweaksPanel';
 import { KEEP_KEY, activeOf, sceneFor, useSettingsStore } from '../../store/useSettingsStore';
 import { KIND_LABEL, sceneMeta } from '../../data/catalog';
 import { SceneKind } from '../../types/environment';
@@ -24,6 +25,8 @@ export const WorldBar: React.FC = () => {
   const scene = sceneFor(settings);
   const overlayMeta = scene.overlay ? sceneMeta(scene.overlay) : null;
   const [hintVisible, setHintVisible] = useState(true);
+  const [tweaksOpen, setTweaksOpen] = useState(false);
+  const tweakTarget = sceneKind === 'animal' ? currentId : scene.overlay;
 
   useEffect(() => {
     setHintVisible(true);
@@ -79,6 +82,17 @@ export const WorldBar: React.FC = () => {
           <button type="button" onClick={() => cycleScene(1)} className="p-1.5 rounded-full hover:bg-white/10 text-slate-300" aria-label="Next">
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
+          {tweakTarget && (
+            <button
+              type="button"
+              onClick={() => setTweaksOpen((v) => !v)}
+              className={`p-1.5 rounded-full ${tweaksOpen ? 'bg-white/15 text-white' : 'text-slate-300 hover:bg-white/10'}`}
+              aria-label="Animal tweaks"
+              title="Tweak this animal"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+            </button>
+          )}
           <div className="w-px h-5 bg-white/10 mx-1" />
           <button
             type="button"
@@ -99,6 +113,7 @@ export const WorldBar: React.FC = () => {
           </button>
         </div>
       </div>
+      {tweaksOpen && tweakTarget && <TweaksPanel animalId={tweakTarget} onClose={() => setTweaksOpen(false)} />}
     </>
   );
 };

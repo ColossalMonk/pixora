@@ -156,3 +156,54 @@ export function drawLine(
 export function spot(grid: RenderGrid, x: number, y: number, cp: number, color: number, alpha: number, layer: number): void {
   grid.put(Math.floor(x / grid.cellWidth), Math.floor(y / grid.cellHeight), cp, color, alpha, layer);
 }
+
+/**
+ * Fills a polygon (pixel coordinates) as tiles. Cells are sampled at five
+ * points: well-covered cells become tiles (with an optional glyph), partly
+ * covered ones a soft edge dot.
+ */
+export function drawPolygon(
+  grid: RenderGrid,
+  pts: [number, number][],
+  fill: number,
+  alpha: number,
+  layer: number,
+  glyph = 0,
+  glyphColor = 0
+): void {
+  if (pts.length < 3) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of pts) {
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+  const cw = grid.cellWidth;
+  const ch = grid.cellHeight;
+  const inside = (x: number, y: number): boolean => {
+    let hit = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, yi] = pts[i];
+      const [xj, yj] = pts[j];
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) hit = !hit;
+    }
+    return hit;
+  };
+  for (let r = Math.floor(minY / ch); r <= Math.floor(maxY / ch); r++) {
+    for (let c = Math.floor(minX / cw); c <= Math.floor(maxX / cw); c++) {
+      let hits = 0;
+      let centre = false;
+      for (let k = 0; k < 5; k++) {
+        const px = (c + 0.5 + OFFSETS[k][0]) * cw;
+        const py = (r + 0.5 + OFFSETS[k][1]) * ch;
+        if (inside(px, py)) {
+          hits++;
+          if (k === 0) centre = true;
+        }
+      }
+      if (hits >= 3 && centre) grid.putSolid(c, r, glyph, glyphColor, alpha, fill, alpha, layer);
+      else if (hits > 0) grid.put(c, r, SOFT_SIDE, fill, alpha * 0.7, layer);
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import { BaseEnvironment } from './BaseEnvironment';
-import { WorldContext } from '../../types/environment';
+import { Habitat, WorldContext } from '../../types/environment';
 import { EnergyField } from '../physics/EnergyField';
 import { Layer, code } from '../core/RenderGrid';
 import { gradientLUT, hex, hash2, mix } from '../core/Color';
@@ -29,6 +29,13 @@ export class RainyCity extends BaseEnvironment {
   private nextBolt = 25;
   private trailLut = gradientLUT([[0, hex('#1e293b')], [1, hex('#94a3b8')]]);
 
+  private skyPx = 0;
+
+  /** Sky above the rooftops. */
+  public habitat(width: number, height: number): Habitat {
+    return { top: 0, bottom: height, left: 0, right: width, skyBottom: this.skyPx };
+  }
+
   public init(ctx: WorldContext): void {
     const { grid, width, height, quality } = ctx;
     const area = (width * height) / (1440 * 900);
@@ -46,6 +53,7 @@ export class RainyCity extends BaseEnvironment {
         c += w + (far ? 0 : Math.floor(Math.random() * 3));
       }
     }
+    this.skyPx = Math.min(...this.buildings.map((b) => b.top)) * grid.cellHeight;
     this.streaks = [];
     const ns = Math.round(160 * area * quality);
     for (let i = 0; i < ns; i++) this.streaks.push({ x: Math.random() * width, y: Math.random() * height, v: 600 + Math.random() * 500, near: Math.random() < 0.3 });

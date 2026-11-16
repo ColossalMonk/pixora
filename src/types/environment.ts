@@ -89,7 +89,12 @@ export interface Habitat {
   waterY?: number;
   /** Y of the ground line (for walkers), if any. */
   groundY?: number;
+  /** Bottom of the open sky (for flyers), if the world has a horizon. */
+  skyBottom?: number;
 }
+
+/** Where in a world an animal lives. */
+export type Zone = 'sky' | 'water' | 'ground' | 'any';
 
 /** Everything a scene needs each step. */
 export interface WorldContext {
@@ -108,6 +113,8 @@ export interface WorldContext {
   habitat: Habitat;
   /** True when this scene is drawn as a layer on top of a world. */
   layered: boolean;
+  /** Background colour far creatures fade toward (packed RGB). */
+  bg: number;
 }
 
 export interface IEnvironment {
@@ -124,5 +131,9 @@ export interface IEnvironment {
   render(ctx: WorldContext): void;
   /** Worlds: the space they offer an animal layered on top. */
   habitat?(width: number, height: number): Habitat;
+  /** Animals: which part of a world they live in when layered. */
+  readonly zone?: Zone;
+  /** Animals: apply Tweaks-panel values. */
+  tune?(values: Record<string, number> | undefined): void;
   destroy?(): void;
 }

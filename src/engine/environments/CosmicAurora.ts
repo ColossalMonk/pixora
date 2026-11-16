@@ -1,5 +1,5 @@
 import { BaseEnvironment } from './BaseEnvironment';
-import { WorldContext } from '../../types/environment';
+import { Habitat, WorldContext } from '../../types/environment';
 import { SimplexNoise } from '../physics/SimplexNoise';
 import { EnergyField } from '../physics/EnergyField';
 import { Layer, code } from '../core/RenderGrid';
@@ -41,6 +41,14 @@ export class CosmicAurora extends BaseEnvironment {
   private hem = hex('#34f5a6');
   private crown = hex('#b45cf0');
 
+  private ridgePx = 0;
+  private shorePx = 0;
+
+  /** Open sky above the ridges; the shore line for walkers. */
+  public habitat(width: number, height: number): Habitat {
+    return { top: 0, bottom: height, left: 0, right: width, skyBottom: this.ridgePx, groundY: this.shorePx };
+  }
+
   public init(ctx: WorldContext): void {
     const { grid, width, height } = ctx;
     const area = (width * height) / (1440 * 900);
@@ -60,6 +68,8 @@ export class CosmicAurora extends BaseEnvironment {
       this.nearRidge[c] = Math.round(this.lakeTop - 1 - Math.pow(n, 1.8) * grid.rows * 0.1);
     }
 
+    this.ridgePx = Math.min(...Array.from(this.farRidge)) * grid.cellHeight;
+    this.shorePx = (this.lakeTop + 1) * grid.cellHeight;
     this.stars = [];
     for (let i = 0; i < 160 * area; i++) {
       const c = Math.floor(Math.random() * grid.cols);

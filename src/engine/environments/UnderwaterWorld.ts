@@ -1,29 +1,16 @@
 import { BaseEnvironment } from './BaseEnvironment';
 import { Habitat, WorldContext } from '../../types/environment';
-import { BoidsSystem } from '../physics/BoidsSystem';
 import { SimplexNoise } from '../physics/SimplexNoise';
 import { EnergyField } from '../physics/EnergyField';
 import { Layer, code } from '../core/RenderGrid';
-import { gradientLUT, hex, mix, hash2, scale } from '../core/Color';
+import { gradientLUT, hex, mix, hash2 } from '../core/Color';
 import { renderField } from '../draw/Field';
 import { drawBody, drawLine, spot } from '../draw/Shapes';
 
 interface Bubble { x: number; y: number; vy: number; size: number; wobble: number; }
 interface Kelp { x: number; segs: number; segLen: number; phase: number; sway: number; depth: number; }
 interface Coral { x: number; branches: [number, number, number, number][]; color: number; }
-interface Jelly {
-  x: number; y: number; vx: number; vy: number; phase: number; size: number; hue: number;
-  tentacles: Float32Array[]; // [x0,y0,px0,py0, x1,y1,...] verlet points
-}
-interface BigFish { x: number; y: number; vx: number; vy: number; heading: number; len: number; phase: number; palette: number; targetX: number; targetY: number; timer: number; }
 interface Snow { x: number; y: number; s: number; }
-
-const SPECIES = [
-  { right: '><>', left: '<><', color: hex('#5eead4') },
-  { right: '>=>', left: '<=<', color: hex('#fcd34d') },
-  { right: '><(°>', left: '<°)><', color: hex('#fda4af') },
-  { right: '>-<>', left: '<>-<', color: hex('#93c5fd') },
-];
 
 export class UnderwaterWorld extends BaseEnvironment {
   public readonly id = 'underwater';
@@ -31,31 +18,18 @@ export class UnderwaterWorld extends BaseEnvironment {
   public readonly backdrop = [hex('#0c3b5e'), hex('#082a47'), hex('#05182c'), hex('#030b17')];
 
   private noise = new SimplexNoise(42);
-  private boids = new BoidsSystem();
-  private species = new Uint8Array(0);
   private wake = new EnergyField();
   private light = new Float32Array(0);
   private bed = new Int16Array(0);
   private bubbles: Bubble[] = [];
   private kelp: Kelp[] = [];
   private coral: Coral[] = [];
-  private jellies: Jelly[] = [];
-  private bigFish: BigFish[] = [];
   private snow: Snow[] = [];
   private vents: number[] = [];
 
   private lightLut = gradientLUT([[0, hex('#0e4a6e')], [0.5, hex('#3aa6c9')], [1, hex('#c9f3ff')]]);
   private wakeLut = gradientLUT([[0, hex('#1d6f8f')], [1, hex('#bff2ff')]]);
   private sandLut = gradientLUT([[0, hex('#3b3226')], [0.6, hex('#8a7558')], [1, hex('#d9c49a')]]);
-  private fishLuts = [
-    gradientLUT([[0, hex('#7c2d12')], [0.5, hex('#f97316')], [1, hex('#fed7aa')]]),
-    gradientLUT([[0, hex('#1e3a8a')], [0.5, hex('#3b82f6')], [1, hex('#e0f2fe')]]),
-    gradientLUT([[0, hex('#4c1d95')], [0.5, hex('#a78bfa')], [1, hex('#f5f3ff')]]),
-  ];
-  private scaleTex = Uint32Array.from(Array.from('%≡=;:·').reverse().map(code));
-  private jellyLutA = gradientLUT([[0, hex('#9d174d')], [0.5, hex('#f472b6')], [1, hex('#fde7f3')]]);
-  private jellyLutB = gradientLUT([[0, hex('#5b21b6')], [0.5, hex('#a78bfa')], [1, hex('#ede9fe')]]);
-  private bellTex = Uint32Array.from(Array.from(".:'·°").map(code));
   private rockLut = gradientLUT([[0, hex('#1f2937')], [1, hex('#64748b')]]);
   private rockTex = Uint32Array.from(Array.from('.:%#@').map(code));
 
@@ -80,12 +54,6 @@ export class UnderwaterWorld extends BaseEnvironment {
     }
 
     this.seabedPx = Math.min(...Array.from(this.bed)) * grid.cellHeight;
-
-    // Fish schools: depth layers by index.
-    const count = Math.round(Math.min(90, 38 * area * quality + 10));
-    this.boids.reset(count, width, height, (i) => (i % 5 === 0 ? 0.85 + Math.random() * 0.15 : i % 2 ? 0.15 + Math.random() * 0.3 : 0.5 + Math.random() * 0.25));
-    this.species = new Uint8Array(count);
-    for (let i = 0; i < count; i++) this.species[i] = Math.floor(i / 9) % SPECIES.length;
 
     this.kelp = [];
     const kelpCount = Math.round((width / 95) * Math.min(1.2, quality));
@@ -117,30 +85,6 @@ export class UnderwaterWorld extends BaseEnvironment {
     this.snow = [];
     for (let i = 0; i < 90 * area * quality; i++) this.snow.push({ x: Math.random() * width, y: Math.random() * height, s: 0.3 + Math.random() * 0.7 });
 
-    this.jellies = [];
-    const jellyCount = Math.max(2, Math.round(3 * area));
-    for (let i = 0; i < jellyCount; i++) {
-      this.jellies.push(this.newJelly(width * (0.12 + (0.76 * (i + Math.random() * 0.5)) / jellyCount), height * (0.25 + Math.random() * 0.4), grid.cellWidth, i));
-    }
-
-    this.bigFish = [];
-    const big = Math.max(1, Math.round(2 * area));
-    for (let i = 0; i < big; i++) {
-      const dir = i % 2 ? -1 : 1;
-      this.bigFish.push({
-        x: width * (0.2 + 0.6 * Math.random()),
-        y: height * (0.3 + 0.35 * Math.random()),
-        vx: 40 * dir,
-        vy: 0,
-        heading: dir > 0 ? 0 : Math.PI,
-        len: grid.cellWidth * (20 + Math.random() * 8),
-        phase: Math.random() * 10,
-        palette: i % this.fishLuts.length,
-        targetX: width * Math.random(),
-        targetY: height * (0.25 + Math.random() * 0.4),
-        timer: 4 + Math.random() * 6,
-      });
-    }
   }
 
   private growCoral(x: number, y: number, angle: number, len: number, depth: number): [number, number, number, number][] {
@@ -158,56 +102,23 @@ export class UnderwaterWorld extends BaseEnvironment {
     return { x, y, vy: 30 + Math.random() * 50, size: Math.random(), wobble: Math.random() * 10 };
   }
 
-  private newJelly(x: number, y: number, cw: number, i: number): Jelly {
-    const size = 0.8 + Math.random() * 0.6;
-    const tentacles: Float32Array[] = [];
-    const nT = 6;
-    const segs = 9 + Math.floor(size * 4);
-    for (let t = 0; t < nT; t++) {
-      const arr = new Float32Array(segs * 4);
-      for (let s = 0; s < segs; s++) {
-        arr[s * 4] = arr[s * 4 + 2] = x;
-        arr[s * 4 + 1] = arr[s * 4 + 3] = y + s * 8;
-      }
-      tentacles.push(arr);
-    }
-    return { x, y, vx: 0, vy: 0, phase: Math.random() * 6, size: size * cw * 9, hue: i % 2, tentacles };
-  }
-
   public update(dt: number, ctx: WorldContext): void {
     this.time += dt;
     const { width, height, input, grid } = ctx;
     const t = this.time;
     const pointer = input.active && input.intensity > 0;
 
-    // Clicks: startle fish, burst bubbles, push jellies.
+    // Clicks: a burst of bubbles and a ripple of disturbed water.
     for (const click of input.clicks) {
-      this.boids.startle(click.x, click.y, 260 * input.intensity, 420 * input.intensity);
       for (let i = 0; i < 14; i++) {
         const b = this.newBubble(click.x + (Math.random() - 0.5) * 30, click.y + (Math.random() - 0.5) * 20);
         b.vy = 60 + Math.random() * 90;
         this.bubbles.push(b);
       }
       this.wake.stamp(click.x / grid.cellWidth, click.y / grid.cellHeight, 6, 1.6);
-      for (const j of this.jellies) {
-        const dx = j.x - click.x;
-        const dy = j.y - click.y;
-        const d = Math.hypot(dx, dy);
-        if (d < 260 && d > 1) {
-          j.vx += (dx / d) * 90 * input.intensity;
-          j.vy += (dy / d) * 60 * input.intensity;
-        }
-      }
     }
     if (this.bubbles.length > 160) this.bubbles.splice(0, this.bubbles.length - 160);
 
-    this.boids.update(dt, pointer ? input.x : NaN, input.y, input.intensity);
-    // Fast swimmers leave a faint wake.
-    for (let i = 0; i < this.boids.count; i += 2) {
-      if (this.boids.panic[i] > 0 || this.boids.depth[i] > 0.8) {
-        this.wake.add(this.boids.x[i] / grid.cellWidth, this.boids.y[i] / grid.cellHeight, 0.06);
-      }
-    }
     if (pointer) {
       const sp = Math.hypot(input.vx, input.vy);
       if (sp > 120) this.wake.stamp(input.x / grid.cellWidth, input.y / grid.cellHeight, 2.5, Math.min(0.5, sp / 4000));
@@ -233,98 +144,6 @@ export class UnderwaterWorld extends BaseEnvironment {
       if (s.y > height) { s.y = -5; s.x = Math.random() * width; }
     }
 
-    // Jellyfish: pulse propulsion + verlet tentacles.
-    for (const j of this.jellies) {
-      j.phase += dt * 1.6;
-      const pulse = Math.max(0, Math.sin(j.phase)) ** 3;
-      j.vy += (-pulse * 70 + 14) * dt;
-      j.vx += Math.sin(t * 0.2 + j.size) * 4 * dt;
-      if (pointer) {
-        const dx = j.x - input.x;
-        const dy = j.y - input.y;
-        const d = Math.hypot(dx, dy);
-        if (d < 160 && d > 1) {
-          j.vx += (dx / d) * 40 * dt * input.intensity;
-          j.vy += (dy / d) * 30 * dt * input.intensity;
-        }
-      }
-      j.vx *= Math.exp(-dt * 0.8);
-      j.vy *= Math.exp(-dt * 1.2);
-      j.x += j.vx * dt;
-      j.y += j.vy * dt;
-      if (j.y < height * 0.12) j.vy += 30 * dt;
-      if (j.y > height * 0.7) j.vy -= 40 * dt;
-      if (j.x < 60) j.vx += 20 * dt;
-      if (j.x > width - 60) j.vx -= 20 * dt;
-
-      const bellW = j.size * (1 + pulse * -0.18);
-      for (let k = 0; k < j.tentacles.length; k++) {
-        const p = j.tentacles[k];
-        const segs = p.length / 4;
-        const rootX = j.x + (k / (j.tentacles.length - 1) - 0.5) * bellW * 0.8;
-        const rootY = j.y + 30;
-        p[0] = rootX; p[1] = rootY;
-        const seg = 7 + j.size * 0.02;
-        for (let s = 1; s < segs; s++) {
-          const o = s * 4;
-          const vx = (p[o] - p[o + 2]) * 0.88;
-          const vy = (p[o + 1] - p[o + 3]) * 0.88;
-          p[o + 2] = p[o];
-          p[o + 3] = p[o + 1];
-          p[o] += vx + Math.sin(t * 1.3 + s * 0.45 + k * 1.7) * 0.12;
-          p[o + 1] += vy + 0.55;
-        }
-        for (let iter = 0; iter < 2; iter++) {
-          for (let s = 1; s < segs; s++) {
-            const o = s * 4;
-            const po = o - 4;
-            const dx = p[o] - p[po];
-            const dy = p[o + 1] - p[po + 1];
-            const d = Math.hypot(dx, dy) || 1;
-            const diff = (d - seg) / d;
-            p[o] -= dx * diff;
-            p[o + 1] -= dy * diff;
-          }
-        }
-      }
-    }
-
-    // Big fish: slow wander, curious about a still pointer, flee a fast one.
-    for (const f of this.bigFish) {
-      f.timer -= dt;
-      f.phase += dt * (3 + Math.hypot(f.vx, f.vy) * 0.03);
-      if (f.timer <= 0) {
-        f.targetX = width * (0.08 + Math.random() * 0.84);
-        f.targetY = height * (0.22 + Math.random() * 0.45);
-        f.timer = 5 + Math.random() * 7;
-      }
-      let tx = f.targetX;
-      let ty = f.targetY;
-      if (pointer) {
-        const sp = Math.hypot(input.vx, input.vy);
-        const d = Math.hypot(input.x - f.x, input.y - f.y);
-        if (sp < 60 && d < 420) { tx = input.x - Math.sign(input.x - f.x) * f.len * 0.9; ty = input.y; }
-        else if (sp > 900 && d < 260) { tx = f.x + (f.x - input.x) * 2; ty = f.y + (f.y - input.y) * 2; }
-      }
-      const dx = tx - f.x;
-      const dy = ty - f.y;
-      const d = Math.hypot(dx, dy) || 1;
-      const want = Math.min(70, d * 0.5);
-      f.vx += ((dx / d) * want - f.vx) * dt * 0.8;
-      f.vy += ((dy / d) * want * 0.3 - f.vy) * dt * 0.8;
-      f.x += f.vx * dt;
-      f.y += f.vy * dt;
-      const desired = Math.atan2(f.vy, f.vx);
-      let diff = desired - f.heading;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      if (Math.hypot(f.vx, f.vy) > 8) f.heading += diff * Math.min(1, dt * 2.2);
-      // Fish pitch, they don't swim straight up: clamp to ±0.45 rad off horizontal.
-      const right = Math.cos(f.heading) >= 0;
-      const pitch = Math.atan2(Math.sin(f.heading), Math.abs(Math.cos(f.heading)));
-      const clamped = Math.max(-0.45, Math.min(0.45, pitch));
-      f.heading = right ? clamped : Math.PI - clamped;
-      this.wake.add((f.x - Math.cos(f.heading) * f.len * 0.5) / grid.cellWidth, f.y / grid.cellHeight, 0.05);
-    }
   }
 
   public render(ctx: WorldContext): void {
@@ -356,105 +175,6 @@ export class UnderwaterWorld extends BaseEnvironment {
 
     // 4. Far kelp (behind fish).
     this.renderKelp(ctx, false);
-
-    // 5. Fish schools by depth.
-    const fog = hex('#0a2f4a');
-    for (let i = 0; i < this.boids.count; i++) {
-      const x = this.boids.x[i];
-      const y = this.boids.y[i];
-      const d = this.boids.depth[i];
-      const right = this.boids.vx[i] >= 0;
-      const sp = SPECIES[this.species[i]];
-      const col = Math.floor(x / cw);
-      const row = Math.floor(y / ch);
-      const color = mix(sp.color, fog, (1 - d) * 0.65);
-      const alpha = 0.35 + d * 0.65;
-      if (d < 0.45) {
-        grid.putChar(col, row, right ? '›' : '‹', color, alpha, Layer.FAR);
-        continue;
-      }
-      const str = d > 0.8 ? (right ? sp.right : sp.left) : right ? '><>' : '<><';
-      const wiggle = Math.sin(this.boids.phase[i] * 2.4) > 0.3;
-      const len = str.length;
-      const start = right ? col - len + 1 : col;
-      const layer = d > 0.8 ? Layer.NEAR : Layer.MID;
-      for (let k = 0; k < len; k++) {
-        let chh = str[k];
-        if (wiggle && ((right && k === 0) || (!right && k === len - 1))) chh = right ? '}' : '{';
-        grid.putChar(start + k, row, chh, k === (right ? len - 1 : 0) ? scale(color, 1.2) : color, alpha, layer);
-      }
-    }
-
-    // 6. Jellyfish (translucent bells, stroke tentacles).
-    for (const j of this.jellies) {
-      const pulse = Math.max(0, Math.sin(j.phase)) ** 3;
-      const w = j.size * (1 - pulse * 0.18);
-      const h = j.size * (0.55 + pulse * 0.12);
-      for (const p of j.tentacles) {
-        const segs = p.length / 4;
-        for (let s = 1; s < segs; s++) {
-          const o = s * 4;
-          const a = 0.75 * (1 - s / segs) + 0.15;
-          drawLine(grid, p[o - 4], p[o - 3], p[o], p[o + 1], j.hue ? hex('#e9d5ff') : hex('#fbcfe8'), a, Layer.MID);
-        }
-      }
-      const bellLut = j.hue ? this.jellyLutB : this.jellyLutA;
-      drawBody(grid, {
-        x: j.x, y: j.y, heading: 0, length: w, width: h * 2,
-        sampler: (u, v) => {
-          if (v > 0.04) return 0;
-          // Dome with a scalloped hem.
-          const hem = 0.04 - Math.abs(Math.sin(u * 22)) * 0.05;
-          if (v > hem) return 0;
-          const e = (u * u) / 0.25 + (v * v) / 0.25;
-          if (e > 1) return 0;
-          return 0.3 + (1 - e) * 0.55 + (v < -0.38 ? 0.15 : 0);
-        },
-        lut: bellLut, texture: this.bellTex, layer: Layer.NEAR, solid: true, fillAlpha: 0.75, opacity: 0.95,
-      });
-    }
-
-    // 7. Big fish (silhouettes with travelling tail wave).
-    for (const f of this.bigFish) {
-      const facingLeft = Math.cos(f.heading) < 0;
-      const phase = f.phase;
-      const len = f.len;
-      drawBody(grid, {
-        x: f.x, y: f.y, heading: f.heading, length: len, width: len * 0.46, extent: 0.65,
-        flipV: facingLeft,
-        sampler: (u, v) => {
-          // u: -0.5 tail … 0.5 head; v: -0.5 back … 0.5 belly
-          const tailWave = Math.sin(phase - u * 5) * 0.1 * (0.5 - u);
-          const vv = v - tailWave;
-          if (u < -0.3) {
-            // Forked tail fin
-            const k = (-0.3 - u) / 0.2;
-            if (k > 1) return 0;
-            const spread = 0.08 + k * 0.42;
-            const notch = k * 0.22;
-            return Math.abs(vv) < spread && Math.abs(vv) > notch ? 0.35 : 0;
-          }
-          const x = (u + 0.3) / 0.8; // 0 tail root … 1 snout
-          const half = x < 0.55 ? 0.12 + 0.3 * Math.sin((Math.PI / 2) * (x / 0.55)) : 0.42 * Math.pow(Math.cos((Math.PI / 2) * ((x - 0.55) / 0.45)), 0.75);
-          // Dorsal fin
-          if (vv < -half && x > 0.3 && x < 0.62) {
-            const tip = 0.16 * (1 - Math.abs(x - 0.42) / 0.2);
-            return -vv - half < tip ? 0.3 : 0;
-          }
-          // Pelvic fin
-          if (vv > half && x > 0.45 && x < 0.6) return vv - half < 0.07 ? 0.4 : 0;
-          if (Math.abs(vv) > half) return 0;
-          const b = (vv / Math.max(half, 0.01) + 1) / 2; // 0 back … 1 belly
-          const bars = Math.sin(x * 18) > 0.7 && b < 0.6 ? -0.15 : 0;
-          const gill = Math.abs(x - 0.78) < 0.025 ? -0.2 : 0;
-          return Math.max(0.05, Math.min(1, 0.3 + b * 0.6 + bars + gill));
-        },
-        lut: this.fishLuts[f.palette], texture: this.scaleTex, layer: Layer.FRONT, solid: true, opacity: 0.95,
-      });
-      const ex = f.x + Math.cos(f.heading) * len * 0.32 - Math.sin(f.heading) * len * 0.05 * (facingLeft ? -1 : 1);
-      const ey = f.y + Math.sin(f.heading) * len * 0.32 - len * 0.04;
-      grid.putSolid(Math.floor(ex / cw), Math.floor(ey / ch), code('●'), hex('#0b1020'), 1, hex('#f8fafc'), 1, Layer.FX);
-    }
 
     // 8. Bubbles.
     for (const b of this.bubbles) {

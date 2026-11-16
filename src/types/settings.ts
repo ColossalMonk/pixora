@@ -29,6 +29,8 @@ export interface UserSettings {
   layerAnimals: boolean;
   keepAnimal: boolean;
   keepFlow: boolean;
+  /** Tweaks-panel values per animal (only changed knobs are stored). */
+  animalTweaks: Record<string, Record<string, number>>;
 
   // Engine
   characterStyle: CharacterStyle;

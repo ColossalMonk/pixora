@@ -1,5 +1,5 @@
 import { BaseEnvironment } from './BaseEnvironment';
-import { WorldContext } from '../../types/environment';
+import { Habitat, WorldContext } from '../../types/environment';
 import { WaveEquation2D } from '../physics/WaveEquation2D';
 import { SimplexNoise } from '../physics/SimplexNoise';
 import { Layer, code } from '../core/RenderGrid';
@@ -10,12 +10,11 @@ import { drawLine, spot } from '../draw/Shapes';
 interface Petal { x: number; y: number; vx: number; vy: number; glyph: number; spin: number; }
 interface Drop { x: number; y: number; vy: number; hitY: number; }
 interface Splash { x: number; y: number; age: number; }
-interface Firefly { x: number; y: number; phase: number; vx: number; vy: number; }
 
 /**
  * Moonlit lake: a sky band with moon, stars and a treeline; below it a wave
  * heightfield shaded by its surface normal, a shimmering moon path, drifting
- * petals, passing rain showers and fireflies along the shore.
+ * petals and passing rain showers.
  */
 export class InteractiveWater extends BaseEnvironment {
   public readonly id = 'ripples';
@@ -34,7 +33,6 @@ export class InteractiveWater extends BaseEnvironment {
   private petals: Petal[] = [];
   private drops: Drop[] = [];
   private splashes: Splash[] = [];
-  private fireflies: Firefly[] = [];
   private rainTimer = 20;
   private raining = 0;
   private lastPX = -1;
@@ -44,10 +42,18 @@ export class InteractiveWater extends BaseEnvironment {
   private moonPath = hex('#fff1c1');
   private petalGlyphs = Array.from('❀✿·°•').map(code);
 
+  private horizonPx = 0;
+
+  /** Sky above the treeline for flyers, the lake below for swimmers. */
+  public habitat(width: number, height: number): Habitat {
+    return { top: 0, bottom: height, left: 0, right: width, skyBottom: this.horizonPx - 20, waterY: this.horizonPx + 10 };
+  }
+
   public init(ctx: WorldContext): void {
     const { grid, width, height, quality } = ctx;
     const area = (width * height) / (1440 * 900);
     this.horizon = Math.max(4, Math.round(grid.rows * 0.24));
+    this.horizonPx = (this.horizon + 1) * grid.cellHeight;
     this.wave.resize(grid.cols, grid.rows, grid.aspect);
     this.wave.damping = 0.986;
     this.field = this.ensure(this.field, grid.size);
@@ -82,10 +88,6 @@ export class InteractiveWater extends BaseEnvironment {
         glyph: this.petalGlyphs[(Math.random() * this.petalGlyphs.length) | 0],
         spin: Math.random() * 6,
       });
-    }
-    this.fireflies = [];
-    for (let i = 0; i < 14 * area; i++) {
-      this.fireflies.push({ x: Math.random() * width, y: (this.horizon - 3 + Math.random() * 4) * grid.cellHeight, phase: Math.random() * 6, vx: 0, vy: 0 });
     }
     this.drops = [];
     this.splashes = [];
@@ -174,16 +176,6 @@ export class InteractiveWater extends BaseEnvironment {
       if (p.y < waterTop + 0.5) p.y = waterTop + 0.5;
     }
 
-    for (const f of this.fireflies) {
-      f.phase += dt;
-      f.vx += (Math.sin(f.phase * 0.7 + f.y) * 18 - f.vx) * dt;
-      f.vy += (Math.cos(f.phase * 0.9 + f.x * 0.01) * 10 - f.vy) * dt;
-      f.x += f.vx * dt;
-      f.y += f.vy * dt;
-      if (f.x < 0) f.x += width;
-      if (f.x > width) f.x -= width;
-      f.y = Math.max((this.horizon - 5) * ch, Math.min((this.horizon + 2) * ch, f.y));
-    }
     void height;
   }
 
@@ -289,9 +281,5 @@ export class InteractiveWater extends BaseEnvironment {
       if (k < 0.4) spot(grid, s.x, s.y - ch * (1 + k * 2), code("'"), hex('#e6f0ff'), a, Layer.FRONT);
     }
 
-    for (const f of this.fireflies) {
-      const glow = 0.5 + 0.5 * Math.sin(f.phase * 2.3);
-      if (glow > 0.25) spot(grid, f.x, f.y, code(glow > 0.8 ? '•' : '·'), hex('#fde68a'), glow, Layer.FX);
-    }
   }
 }

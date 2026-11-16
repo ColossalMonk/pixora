@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   layerAnimals: false,
   keepAnimal: false,
   keepFlow: false,
+  animalTweaks: {},
   characterStyle: 'auto',
   colorTheme: 'true-color',
   fontSize: 14,

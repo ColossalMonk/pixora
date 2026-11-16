@@ -5,6 +5,7 @@ import { Rasterizer } from './Rasterizer';
 import { calibrateRamps, resolveStyle } from './Charsets';
 import { themeBackdrop, themeLUT } from './PaletteManager';
 import { createEnvironment } from '../environments/registry';
+import { zoneOf } from '../animals/kit';
 
 const STEP = 1 / 60;
 const MAX_STEPS = 4;
@@ -123,6 +124,7 @@ export class Engine {
     let env = this.environments.get(id);
     if (!env) {
       env = createEnvironment(id);
+      env.tune?.(this.tunings[id]);
       this.environments.set(id, env);
     }
     return env;
@@ -149,6 +151,24 @@ export class Engine {
     if (this.width > 0) {
       this.prepareBackdrop();
       if (this.isStill()) this.renderStill();
+    }
+  }
+
+  private tunings: Record<string, Record<string, number>> = {};
+
+  /** Tweaks-panel values for animals, keyed by animal id. Applies live. */
+  public setTunings(all: Record<string, Record<string, number>>): void {
+    const prev = this.tunings;
+    this.tunings = all;
+    const structural = ['density', 'farthest', 'skein', 'tentacles'];
+    for (const [id, env] of this.environments) {
+      env.tune?.(all[id]);
+      // Population-shaping knobs re-seed the animal so the change shows at once.
+      const changed = structural.some((k) => (prev[id]?.[k] ?? null) !== (all[id]?.[k] ?? null));
+      if (changed && this.width > 0) {
+        if (env === this.active) env.init(this.context(env, false));
+        else if (env === this.overlay) env.init(this.context(env, true));
+      }
     }
   }
 
@@ -255,8 +275,9 @@ export class Engine {
       style: resolveStyle(this.config.style, env?.preferredStyle ?? 'ascii-standard'),
       auto: this.config.style === 'auto',
       quality: tier === 'low' || this.degrade >= 2 ? 0.6 : tier === 'high' ? 1.25 : 1,
-      habitat: layered && this.active?.habitat ? this.active.habitat(this.width, this.height) : full,
+      habitat: layered && this.active?.habitat ? zoneOf(this.active.habitat(this.width, this.height), env?.zone ?? 'any') : full,
       layered,
+      bg: this.active ? this.active.backdrop[Math.floor(this.active.backdrop.length / 2)] : 0x0b0c12,
     };
   }
 
@@ -465,7 +486,8 @@ export class Engine {
     id: EnvironmentId,
     canvas: HTMLCanvasElement,
     config: Pick<EngineConfig, 'colorTheme' | 'style'>,
-    fontPx = 9
+    fontPx = 9,
+    tuning?: Record<string, number>
   ): void {
     const ctx2d = canvas.getContext('2d', { alpha: false });
     if (!ctx2d) return;
@@ -493,7 +515,9 @@ export class Engine {
       quality: 0.8,
       habitat: { top: 0, bottom: height, left: 0, right: width },
       layered: false,
+      bg: env.backdrop[Math.floor(env.backdrop.length / 2)],
     };
+    env.tune?.(tuning);
     env.init(wctx);
     for (let i = 0; i < 240; i++) env.update(STEP, wctx);
     grid.clear();

@@ -5,6 +5,7 @@ import { EnergyField } from '../physics/EnergyField';
 import { Layer, code } from '../core/RenderGrid';
 import { gradientLUT, hex, mix } from '../core/Color';
 import { renderField } from '../draw/Field';
+import { Knob } from './kit';
 
 interface Fly { x: number; y: number; vx: number; vy: number; theta: number; omega: number; seed: number; glow: number; }
 
@@ -15,6 +16,11 @@ interface Fly { x: number; y: number; vx: number; vy: number; theta: number; ome
  */
 export class Fireflies extends AnimalBase {
   public readonly id = 'fireflies';
+  public readonly zone = 'any' as const;
+  public static knobs: Knob[] = [
+    { key: 'sync', label: 'Sync speed', min: 0, max: 3, step: 0.05, value: 1, hint: 'How quickly they fall into flashing together. 0 = never.' },
+    { key: 'glow', label: 'Glow', min: 0.2, max: 2, step: 0.05, value: 1 },
+  ];
   private noise = new SimplexNoise(77);
   private glow = new EnergyField();
   private flies: Fly[] = [];
@@ -28,7 +34,7 @@ export class Fireflies extends AnimalBase {
     const area = (w * h) / (1440 * 900);
     this.glow.resize(grid.cols, grid.rows, grid.aspect);
     this.flies = [];
-    const n = Math.round(Math.min(90, 46 * area * quality + 10));
+    const n = Math.round(Math.min(160, (46 * area * quality + 10) * this.k('density')));
     for (let i = 0; i < n; i++) {
       this.flies.push({
         x: habitat.left + Math.random() * w,
@@ -46,7 +52,7 @@ export class Fireflies extends AnimalBase {
   public update(dt: number, ctx: WorldContext): void {
     this.time += dt;
     const { input, grid, habitat } = ctx;
-    this.coupling = Math.min(1.6, this.coupling + dt * 0.025);
+    this.coupling = Math.min(1.6 * Math.min(1, this.k('sync')), this.coupling + dt * 0.025 * this.k('sync'));
     if (input.clicks.length) {
       for (const f of this.flies) f.theta = 0.05 + Math.random() * 0.1;
       this.coupling = 0.2;
@@ -83,12 +89,12 @@ export class Fireflies extends AnimalBase {
       }
       f.vx += (ax - f.vx) * dt;
       f.vy += (ay - f.vy) * dt;
-      f.x += f.vx * dt;
-      f.y += f.vy * dt;
+      f.x += f.vx * dt * this.k('speed');
+      f.y += f.vy * dt * this.k('speed');
       if (f.x < habitat.left) f.x += w;
       if (f.x > habitat.right) f.x -= w;
       f.y = Math.max(habitat.top + 10, Math.min(habitat.bottom - 10, f.y));
-      if (f.glow > 0.05) this.glow.stamp(f.x / grid.cellWidth, f.y / grid.cellHeight, 3.5, f.glow * 0.18);
+      if (f.glow > 0.05) this.glow.stamp(f.x / grid.cellWidth, f.y / grid.cellHeight, 3.5 * this.k('size'), f.glow * 0.18 * this.k('glow'));
     }
     this.glow.step(dt, 3, true);
   }

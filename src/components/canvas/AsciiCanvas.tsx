@@ -18,6 +18,7 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef }) => {
     activeAnimal,
     activeFlow,
     layerAnimals,
+    animalTweaks,
     characterStyle,
     colorTheme,
     fontSize,
@@ -45,6 +46,7 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef }) => {
       performanceTier: s.performanceTier,
       calmCenter: s.calmCenter,
     });
+    engine.setTunings(s.animalTweaks);
     const scene = sceneFor(s);
     engine.setScene(scene.base, scene.overlay);
     engine.attach(canvasRef.current);
@@ -58,6 +60,10 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef }) => {
     },
     []
   );
+
+  useEffect(() => {
+    engineRef.current?.setTunings(animalTweaks);
+  }, [animalTweaks]);
 
   useEffect(() => {
     const scene = sceneFor({ sceneKind, activeWorld, activeAnimal, activeFlow, layerAnimals });

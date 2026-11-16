@@ -1,5 +1,5 @@
 import { BaseEnvironment } from './BaseEnvironment';
-import { WorldContext } from '../../types/environment';
+import { Habitat, WorldContext } from '../../types/environment';
 import { SimplexNoise } from '../physics/SimplexNoise';
 import { Layer, code } from '../core/RenderGrid';
 import { hex, hash2, mix } from '../core/Color';
@@ -28,6 +28,13 @@ export class WinterPines extends BaseEnvironment {
   private gust = 0;
   private gustDir = 1;
 
+  private skyPx = 0;
+
+  /** Open sky above the far ridge. */
+  public habitat(width: number, height: number): Habitat {
+    return { top: 0, bottom: height, left: 0, right: width, skyBottom: this.skyPx };
+  }
+
   public init(ctx: WorldContext): void {
     const { grid, width, height, quality } = ctx;
     const area = (width * height) / (1440 * 900);
@@ -40,6 +47,7 @@ export class WinterPines extends BaseEnvironment {
       this.ridgeFar[c] = Math.round(grid.rows * 0.62 - Math.pow(f, 1.5) * grid.rows * 0.22);
       this.ridgeNear[c] = Math.round(grid.rows * 0.8 - n * grid.rows * 0.08);
     }
+    this.skyPx = Math.min(...Array.from(this.ridgeFar)) * grid.cellHeight;
     this.drift = new Float32Array(grid.cols);
     this.pines = [];
     for (let x = 0; x < width; x += 26 + Math.random() * 40) {

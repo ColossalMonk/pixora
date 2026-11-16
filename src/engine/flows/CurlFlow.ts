@@ -1,4 +1,4 @@
-import { BaseEnvironment } from './BaseEnvironment';
+import { BaseEnvironment } from '../environments/BaseEnvironment';
 import { WorldContext } from '../../types/environment';
 import { SimplexNoise } from '../physics/SimplexNoise';
 import { Layer } from '../core/RenderGrid';
@@ -19,8 +19,8 @@ const MOODS: [number, number][][] = [
   [[0, hex('#0c1a4b')], [0.35, hex('#0ea5e9')], [0.7, hex('#67e8f9')], [1, hex('#ffffff')]],
 ];
 
-export class AbstractFlow extends BaseEnvironment {
-  public readonly id = 'abstract-flow';
+export class CurlFlow extends BaseEnvironment {
+  public readonly id = 'curl';
   public readonly preferredStyle = 'braille' as const;
   public readonly backdrop = [hex('#07061a'), hex('#0b0a22'), hex('#090818'), hex('#05040f')];
 

@@ -1,5 +1,5 @@
 import { BaseEnvironment } from './BaseEnvironment';
-import { WorldContext } from '../../types/environment';
+import { Habitat, WorldContext } from '../../types/environment';
 import { BoidsSystem } from '../physics/BoidsSystem';
 import { SimplexNoise } from '../physics/SimplexNoise';
 import { EnergyField } from '../physics/EnergyField';
@@ -59,6 +59,13 @@ export class UnderwaterWorld extends BaseEnvironment {
   private rockLut = gradientLUT([[0, hex('#1f2937')], [1, hex('#64748b')]]);
   private rockTex = Uint32Array.from(Array.from('.:%#@').map(code));
 
+  private seabedPx = 0;
+
+  /** Animals layered here swim between the surface light and the seabed. */
+  public habitat(width: number, height: number): Habitat {
+    return { top: 20, bottom: Math.min(height, this.seabedPx || height) - 24, left: 0, right: width, groundY: this.seabedPx };
+  }
+
   public init(ctx: WorldContext): void {
     const { grid, width, height, quality } = ctx;
     const area = (width * height) / (1440 * 900);
@@ -71,6 +78,8 @@ export class UnderwaterWorld extends BaseEnvironment {
       const n = this.noise.noise2D(c * 0.035, 3.3) * 0.6 + this.noise.noise2D(c * 0.11, 7.1) * 0.25;
       this.bed[c] = Math.round(grid.rows - 3 - (n + 1) * 1.6);
     }
+
+    this.seabedPx = Math.min(...Array.from(this.bed)) * grid.cellHeight;
 
     // Fish schools: depth layers by index.
     const count = Math.round(Math.min(90, 38 * area * quality + 10));

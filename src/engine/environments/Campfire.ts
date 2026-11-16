@@ -1,5 +1,5 @@
 import { BaseEnvironment } from './BaseEnvironment';
-import { WorldContext } from '../../types/environment';
+import { Habitat, WorldContext } from '../../types/environment';
 import { Layer, code } from '../core/RenderGrid';
 import { gradientLUT, hex, hash2, mix } from '../core/Color';
 import { renderField } from '../draw/Field';
@@ -43,10 +43,18 @@ export class Campfire extends BaseEnvironment {
   private logLut = gradientLUT([[0, hex('#2a160b')], [0.6, hex('#5b341a')], [1, hex('#8a5a33')]]);
   private logTex = Uint32Array.from(Array.from('=-≡').map(code));
 
+  private groundPx = 0;
+
+  /** Animals layered here stay above the ground, in the night air. */
+  public habitat(width: number, height: number): Habitat {
+    return { top: 0, bottom: this.groundPx || height, left: 0, right: width, groundY: this.groundPx };
+  }
+
   public init(ctx: WorldContext): void {
     const { grid, width, height } = ctx;
     const area = (width * height) / (1440 * 900);
     this.groundRow = grid.rows - Math.max(3, Math.round(grid.rows * 0.1));
+    this.groundPx = this.groundRow * grid.cellHeight;
     this.fw = Math.max(24, Math.round(grid.cols * 0.16));
     this.fh = Math.max(16, Math.round(grid.rows * 0.42));
     this.fx0 = Math.round(grid.cols / 2 - this.fw / 2);

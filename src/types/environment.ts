@@ -1,12 +1,14 @@
 import type { RenderGrid } from '../engine/core/RenderGrid';
 import type { InputState, ResolvedStyle } from './engine';
 
-export type EnvironmentId =
+/** The three things a new tab can show. */
+export type SceneKind = 'world' | 'animal' | 'flow';
+
+export type WorldId =
   | 'underwater'
   | 'ripples'
   | 'frog-pond'
   | 'cosmic-aurora'
-  | 'abstract-flow'
   | 'campfire'
   | 'zen-garden'
   | 'meadow'
@@ -14,17 +16,82 @@ export type EnvironmentId =
   | 'firefly-forest'
   | 'rainy-city';
 
-export interface EnvironmentMeta {
+export type AnimalId =
+  | 'butterflies'
+  | 'koi'
+  | 'jellyfish'
+  | 'dragonflies'
+  | 'frogs'
+  | 'cranes'
+  | 'crabs'
+  | 'fireflies'
+  | 'fish'
+  | 'starlings';
+
+export type FlowId = 'curl' | 'magnetic' | 'wind' | 'attractor' | 'contours' | 'vortex';
+
+/** Any renderable scene. */
+export type EnvironmentId = WorldId | AnimalId | FlowId;
+
+/** What a world offers living things (used by the layering rules). */
+export interface WorldTraits {
+  /** 'surface' = open water seen from above, 'underwater' = inside the water, 'shore' = water edge. */
+  water: 'none' | 'surface' | 'underwater' | 'shore';
+  sky: boolean;
+  ground: boolean;
+  flowers: boolean;
+  season: 'warm' | 'cold' | 'any';
+  time: 'night' | 'dusk' | 'day' | 'any';
+}
+
+/** What an animal needs from a world to be layered onto it. */
+export interface AnimalNeeds {
+  water?: WorldTraits['water'][];
+  sky?: boolean;
+  ground?: boolean;
+  flowers?: boolean;
+  season?: WorldTraits['season'][];
+  time?: WorldTraits['time'][];
+  /** Human reason shown when a world doesn't fit. */
+  why: string;
+}
+
+export interface SceneMeta {
   id: EnvironmentId;
+  kind: SceneKind;
   name: string;
   short: string;
   tagline: string;
   description: string;
   interactions: string;
   accent: string;
+  /** Built and selectable. Planned scenes stay hidden until they ship. */
+  ready: boolean;
+  traits?: WorldTraits;
+  needs?: AnimalNeeds;
 }
 
-/** Everything a world needs each step. */
+/** @deprecated kept for older imports. */
+export type EnvironmentMeta = SceneMeta;
+
+/**
+ * Where an animal may live inside the current scene, in CSS pixels. A world
+ * supplies this when an animal is layered over it; alone, an animal gets the
+ * whole screen.
+ */
+export interface Habitat {
+  /** Region the animal should stay within. */
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+  /** Y of a water surface (for swimmers / splashes), if any. */
+  waterY?: number;
+  /** Y of the ground line (for walkers), if any. */
+  groundY?: number;
+}
+
+/** Everything a scene needs each step. */
 export interface WorldContext {
   grid: RenderGrid;
   /** Viewport size in CSS pixels. */
@@ -33,10 +100,14 @@ export interface WorldContext {
   input: InputState;
   /** Style for field layers (water, aurora, trails…). */
   style: ResolvedStyle;
-  /** True when the user left Character Style on Auto — worlds may use bespoke glyph ramps. */
+  /** True when the user left Character Style on Auto — scenes may use bespoke glyph ramps. */
   auto: boolean;
-  /** 0.5 on weak hardware, 1 normally — worlds scale populations by it. */
+  /** 0.5 on weak hardware, 1 normally — scenes scale populations by it. */
   quality: number;
+  /** Space available to animals (whole screen unless layered over a world). */
+  habitat: Habitat;
+  /** True when this scene is drawn as a layer on top of a world. */
+  layered: boolean;
 }
 
 export interface IEnvironment {
@@ -46,10 +117,12 @@ export interface IEnvironment {
   /** Vertical background gradient, top → bottom, as packed RGB. */
   readonly backdrop: number[];
   init(ctx: WorldContext): void;
-  /** Called after the grid changes size. Default behaviour re-seeds the world. */
+  /** Called after the grid changes size. Default behaviour re-seeds the scene. */
   resize(ctx: WorldContext): void;
   /** Fixed-step simulation; dt in seconds (already scaled by animation speed). */
   update(dt: number, ctx: WorldContext): void;
   render(ctx: WorldContext): void;
+  /** Worlds: the space they offer an animal layered on top. */
+  habitat?(width: number, height: number): Habitat;
   destroy?(): void;
 }

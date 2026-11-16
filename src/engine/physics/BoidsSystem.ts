@@ -25,6 +25,9 @@ export class BoidsSystem {
   public panic = new Float32Array(0);
   public width = 800;
   public height = 600;
+  /** Optional inner bounds (habitat); flock steers to stay inside. */
+  public minX = 0;
+  public minY = 0;
   public params: BoidParams = {
     maxSpeed: 130,
     maxForce: 240,
@@ -180,9 +183,9 @@ export class BoidsSystem {
         }
       }
       // Soft walls
-      if (xi < pad) fx += (pad - xi) * 6;
+      if (xi < this.minX + pad) fx += (this.minX + pad - xi) * 6;
       if (xi > this.width - pad) fx -= (xi - (this.width - pad)) * 6;
-      if (yi < pad) fy += (pad - yi) * 6;
+      if (yi < this.minY + pad) fy += (this.minY + pad - yi) * 6;
       if (yi > this.height - pad * 1.6) fy -= (yi - (this.height - pad * 1.6)) * 6;
 
       // Clamp steering force

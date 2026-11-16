@@ -1,8 +1,9 @@
 import React from 'react';
-import { X, Sliders, Palette, Monitor, Search, Cloud, User, Eye } from 'lucide-react';
+import { X, Sliders, Palette, Monitor, Search, Cloud, User, Eye, Layers } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { CharacterStyle, ColorTheme, PerformanceTier } from '../../types/engine';
 import { useEscape } from '../common/useEscape';
+import { fits, sceneMeta, scenesOf } from '../../data/catalog';
 import { SearchEngineId } from '../../types/settings';
 
 interface SettingsDrawerProps {
@@ -33,6 +34,11 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
     showTopWorldCapsule,
     dailyEnvironmentRotation,
     keepWorld,
+    keepAnimal,
+    keepFlow,
+    layerAnimals,
+    activeWorld,
+    activeAnimal,
     calmCenter,
     interactionIntensity,
     updateSettings,
@@ -405,8 +411,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
 
               <label className="flex items-center justify-between text-slate-300 cursor-pointer pt-3 border-t border-white/5">
                 <div>
-                  <div className="font-medium text-slate-200">New world every day</div>
-                  <div className="text-[10px] text-slate-400">Switches at your local midnight</div>
+                  <div className="font-medium text-slate-200">New scene every day</div>
+                  <div className="text-[10px] text-slate-400">World, animal and flow each change at your local midnight</div>
                 </div>
                 <input
                   type="checkbox"
@@ -416,18 +422,60 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
                 />
               </label>
 
-              <label className="flex items-center justify-between text-slate-300 cursor-pointer">
-                <div>
-                  <div className="font-medium text-slate-200">Keep this world forever</div>
-                  <div className="text-[10px] text-slate-400">Same as the switch at the bottom right</div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={keepWorld}
-                  onChange={(e) => updateSettings({ keepWorld: e.target.checked })}
-                  className="accent-teal-400"
-                />
-              </label>
+              <div className="space-y-1.5">
+                <div className="font-medium text-slate-200">Keep forever</div>
+                {([
+                  ['keepWorld', 'This world', keepWorld],
+                  ['keepAnimal', 'This animal', keepAnimal],
+                  ['keepFlow', 'This flow', keepFlow],
+                ] as const).map(([key, label, value]) => (
+                  <label key={key} className="flex items-center justify-between text-slate-300 cursor-pointer">
+                    <span>{label}</span>
+                    <input type="checkbox" checked={value} onChange={(e) => updateSettings({ [key]: e.target.checked })} className="accent-teal-400" />
+                  </label>
+                ))}
+              </div>
+
+              <div className="pt-3 border-t border-white/5 space-y-2">
+                <label className="flex items-center justify-between text-slate-300 cursor-pointer">
+                  <div>
+                    <div className="font-medium text-slate-200 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-teal-300" /> Layer an animal over worlds
+                    </div>
+                    <div className="text-[10px] text-slate-400">Only animals that belong in the world are allowed</div>
+                  </div>
+                  <input type="checkbox" checked={layerAnimals} onChange={(e) => updateSettings({ layerAnimals: e.target.checked })} className="accent-teal-400" />
+                </label>
+                {layerAnimals && (
+                  <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2 space-y-1">
+                    <div className="text-[10px] text-slate-400 px-1 pb-1">
+                      In <span className="text-slate-200">{sceneMeta(activeWorld).name}</span>:
+                    </div>
+                    {scenesOf('animal').map((a) => {
+                      const fit = fits(activeWorld, a.id);
+                      const chosen = activeAnimal === a.id;
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          disabled={!fit.ok}
+                          onClick={() => updateSettings({ activeAnimal: a.id })}
+                          title={fit.reason}
+                          className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left ${
+                            !fit.ok ? 'text-slate-600 cursor-not-allowed' : chosen ? 'bg-teal-400/15 text-teal-100' : 'text-slate-300 hover:bg-white/5'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: fit.ok ? a.accent : '#475569' }} />
+                            {a.name}
+                          </span>
+                          <span className="text-[10px]">{fit.ok ? (chosen ? 'layered' : 'fits') : fit.reason}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

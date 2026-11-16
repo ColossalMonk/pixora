@@ -10,11 +10,14 @@ import { ImageConverterModal } from './components/converter/ImageConverterModal'
 import { SettingsDrawer } from './components/settings/SettingsDrawer';
 import { useSettingsStore } from './store/useSettingsStore';
 import { WorldBar } from './components/worlds/WorldBar';
-import { WORLDS } from './data/worlds';
+import { scenesOf } from './data/catalog';
+import { activeOf } from './store/useSettingsStore';
 import { Compass, Image as ImageIcon, Sliders } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const { loadSettings, showTopWorldCapsule, activeEnvironment, setEnvironment } = useSettingsStore();
+  const settings = useSettingsStore();
+  const { loadSettings, showTopWorldCapsule, sceneKind, showScene } = settings;
+  const current = activeOf(settings, sceneKind);
 
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isConverterOpen, setIsConverterOpen] = useState(false);
@@ -43,13 +46,13 @@ export const App: React.FC = () => {
             aria-label="Quick World Switcher"
             className="hidden md:flex items-center gap-1 p-1 rounded-full glass-panel shadow-lg pointer-events-auto border border-white/10 animate-fade-in"
           >
-            {WORLDS.map((w) => {
-              const isActive = activeEnvironment === w.id;
+            {scenesOf(sceneKind).map((w) => {
+              const isActive = current === w.id;
               return (
                 <button
                   key={w.id}
                   type="button"
-                  onClick={() => setEnvironment(w.id)}
+                  onClick={() => showScene(sceneKind, w.id)}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
                     isActive
                       ? 'bg-teal-400 text-slate-950 font-semibold shadow-sm'

@@ -52,8 +52,16 @@ export class Engine {
   private rasterizer = new Rasterizer();
   public config: EngineConfig;
   private environments = new Map<EnvironmentId, IEnvironment>();
+  /** The scene shown (world, animal or flow). */
   private active: IEnvironment | null = null;
   private activeId: EnvironmentId | null = null;
+  /** Optional animal layered on top of a world. */
+  private overlay: IEnvironment | null = null;
+  private overlayId: EnvironmentId | null = null;
+  /** Crossfade: a copy of the last frame, faded out over the new scene. */
+  private fadeCanvas: HTMLCanvasElement | null = null;
+  private fadeStart = 0;
+  private static readonly FADE_MS = 700;
 
   public readonly input: InputState = {
     x: -1,
@@ -102,26 +110,62 @@ export class Engine {
     this.unbindEvents();
     this.motionQuery?.removeEventListener('change', this.handleMotionChange);
     this.active?.destroy?.();
+    this.overlay?.destroy?.();
     this.canvas = null;
     this.ctx = null;
   }
 
   public setEnvironment(id: EnvironmentId): void {
-    if (id === this.activeId && this.active) return;
-    this.active?.destroy?.();
+    this.setScene(id, null);
+  }
+
+  private instance(id: EnvironmentId): IEnvironment {
     let env = this.environments.get(id);
     if (!env) {
       env = createEnvironment(id);
       this.environments.set(id, env);
     }
-    this.active = env;
-    this.activeId = id;
+    return env;
+  }
+
+  /** Shows `baseId`, optionally with an animal layered on top. Crossfades from the previous scene. */
+  public setScene(baseId: EnvironmentId, overlayId: EnvironmentId | null): void {
+    if (baseId === this.activeId && overlayId === this.overlayId && this.active) return;
+    if (this.active && this.width > 0 && !this.isStill()) this.captureFade();
+    const baseChanged = baseId !== this.activeId || !this.active;
+    if (baseChanged) {
+      this.active?.destroy?.();
+      this.active = this.instance(baseId);
+      this.activeId = baseId;
+      if (this.width > 0) this.active.init(this.context(this.active, false));
+    }
+    if (overlayId !== this.overlayId || baseChanged) {
+      this.overlay?.destroy?.();
+      this.overlay = overlayId ? this.instance(overlayId) : null;
+      this.overlayId = overlayId;
+      if (this.overlay && this.width > 0) this.overlay.init(this.context(this.overlay, true));
+    }
     this.accumulator = 0;
     if (this.width > 0) {
-      env.init(this.context());
       this.prepareBackdrop();
       if (this.isStill()) this.renderStill();
     }
+  }
+
+  /** Copies the current frame (backdrop included) so it can fade out over the next scene. */
+  private captureFade(): void {
+    if (!this.canvas) return;
+    const fc = this.fadeCanvas ?? document.createElement('canvas');
+    fc.width = this.canvas.width;
+    fc.height = this.canvas.height;
+    const g = fc.getContext('2d');
+    if (!g) return;
+    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.rasterizer.paintBackdropTo(g, this.width, this.height);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.drawImage(this.canvas, 0, 0);
+    this.fadeCanvas = fc;
+    this.fadeStart = performance.now();
   }
 
   public updateConfig(next: Partial<EngineConfig>): void {
@@ -179,10 +223,9 @@ export class Engine {
     this.grid.resize(cols, rows, cellW, cellH);
     this.grid.setFocusRect(this.focusRect, this.config.calmCenter);
     this.prepareBackdrop();
-    if (this.active) {
-      if (changed) this.active.resize(this.context());
-    } else {
-      // First size: nothing chosen yet
+    if (this.active && changed) {
+      this.active.resize(this.context(this.active, false));
+      this.overlay?.resize(this.context(this.overlay, true));
     }
     if (this.isStill()) this.renderStill();
   }
@@ -201,16 +244,19 @@ export class Engine {
     }
   }
 
-  private context(): WorldContext {
+  private context(env: IEnvironment | null = this.active, layered = false): WorldContext {
     const tier = this.config.performanceTier;
+    const full = { top: 0, bottom: this.height, left: 0, right: this.width };
     return {
       grid: this.grid,
       width: this.width,
       height: this.height,
       input: this.input,
-      style: resolveStyle(this.config.style, this.active?.preferredStyle ?? 'ascii-standard'),
+      style: resolveStyle(this.config.style, env?.preferredStyle ?? 'ascii-standard'),
       auto: this.config.style === 'auto',
       quality: tier === 'low' || this.degrade >= 2 ? 0.6 : tier === 'high' ? 1.25 : 1,
+      habitat: layered && this.active?.habitat ? this.active.habitat(this.width, this.height) : full,
+      layered,
     };
   }
 
@@ -237,12 +283,15 @@ export class Engine {
   /** Reduced motion: let the world settle for a few seconds, then show one still frame. */
   private renderStill(): void {
     if (!this.active || !this.ctx || this.width === 0) return;
-    const ctx = this.context();
+    const ctx = this.context(this.active, false);
+    const octx = this.overlay ? this.context(this.overlay, true) : null;
     for (let i = 0; i < 180; i++) {
       this.active.update(STEP, ctx);
+      if (this.overlay && octx) this.overlay.update(STEP, octx);
       ctx.input.clicks.length = 0;
     }
-    this.draw(ctx);
+    this.fadeCanvas = null;
+    this.draw(ctx, octx);
   }
 
   public start(): void {
@@ -275,7 +324,8 @@ export class Engine {
     if (!this.active) return;
 
     const t0 = performance.now();
-    const ctx = this.context();
+    const ctx = this.context(this.active, false);
+    const octx = this.overlay ? this.context(this.overlay, true) : null;
     this.trackPointer(elapsed);
 
     this.accumulator += elapsed;
@@ -283,21 +333,33 @@ export class Engine {
     const dt = STEP * this.config.animationSpeed;
     while (this.accumulator >= STEP && steps < MAX_STEPS) {
       this.active.update(dt, ctx);
+      if (this.overlay && octx) this.overlay.update(dt, octx);
       this.input.clicks.length = 0;
       this.accumulator -= STEP;
       steps++;
     }
     if (steps === MAX_STEPS) this.accumulator = 0;
 
-    this.draw(ctx);
+    this.draw(ctx, octx);
     this.adapt(performance.now() - t0);
   };
 
-  private draw(ctx: WorldContext): void {
+  private draw(ctx: WorldContext, octx: WorldContext | null = null): void {
     if (!this.ctx || !this.active) return;
     this.grid.clear();
     this.active.render(ctx);
+    if (this.overlay && octx) this.overlay.render(octx);
     this.rasterizer.draw(this.ctx, this.grid, this.width, this.height, this.font, themeLUT(this.config.colorTheme));
+    if (this.fadeCanvas) {
+      const t = (performance.now() - this.fadeStart) / Engine.FADE_MS;
+      if (t >= 1) {
+        this.fadeCanvas = null;
+      } else {
+        this.ctx.globalAlpha = 1 - t * t * (3 - 2 * t);
+        this.ctx.drawImage(this.fadeCanvas, 0, 0, this.width, this.height);
+        this.ctx.globalAlpha = 1;
+      }
+    }
   }
 
   /** 'auto' tier: if frames keep costing too much, drop to 30 fps, then to a coarser grid. */
@@ -429,6 +491,8 @@ export class Engine {
       style: resolveStyle(config.style, env.preferredStyle),
       auto: config.style === 'auto',
       quality: 0.8,
+      habitat: { top: 0, bottom: height, left: 0, right: width },
+      layered: false,
     };
     env.init(wctx);
     for (let i = 0; i < 240; i++) env.update(STEP, wctx);

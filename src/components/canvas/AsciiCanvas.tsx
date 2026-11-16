@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Engine } from '../../engine/core/Engine';
-import { useSettingsStore } from '../../store/useSettingsStore';
+import { sceneFor, useSettingsStore } from '../../store/useSettingsStore';
 
 interface AsciiCanvasProps {
   /** Element whose box the art should fade behind (clock + search + shortcuts). */
@@ -13,7 +13,11 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef }) => {
 
   const {
     isLoaded,
-    activeEnvironment,
+    sceneKind,
+    activeWorld,
+    activeAnimal,
+    activeFlow,
+    layerAnimals,
     characterStyle,
     colorTheme,
     fontSize,
@@ -41,7 +45,8 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef }) => {
       performanceTier: s.performanceTier,
       calmCenter: s.calmCenter,
     });
-    engine.setEnvironment(s.activeEnvironment);
+    const scene = sceneFor(s);
+    engine.setScene(scene.base, scene.overlay);
     engine.attach(canvasRef.current);
     engineRef.current = engine;
   }, [isLoaded]);
@@ -55,8 +60,9 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef }) => {
   );
 
   useEffect(() => {
-    engineRef.current?.setEnvironment(activeEnvironment);
-  }, [activeEnvironment]);
+    const scene = sceneFor({ sceneKind, activeWorld, activeAnimal, activeFlow, layerAnimals });
+    engineRef.current?.setScene(scene.base, scene.overlay);
+  }, [sceneKind, activeWorld, activeAnimal, activeFlow, layerAnimals]);
 
   useEffect(() => {
     engineRef.current?.updateConfig({

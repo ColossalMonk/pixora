@@ -1,5 +1,5 @@
 import { CharacterStyle, ColorTheme, PerformanceTier } from './engine';
-import { EnvironmentId } from './environment';
+import { AnimalId, FlowId, SceneKind, WorldId } from './environment';
 
 export interface ShortcutItem {
   id: string;
@@ -19,8 +19,18 @@ export interface SearchEngine {
 }
 
 export interface UserSettings {
-  // Environment & Engine
-  activeEnvironment: EnvironmentId;
+  // Scenes
+  /** Which category the tab shows. */
+  sceneKind: SceneKind;
+  activeWorld: WorldId;
+  activeAnimal: AnimalId;
+  activeFlow: FlowId;
+  /** Opt-in: layer a fitting animal over the world. */
+  layerAnimals: boolean;
+  keepAnimal: boolean;
+  keepFlow: boolean;
+
+  // Engine
   characterStyle: CharacterStyle;
   colorTheme: ColorTheme;
   fontSize: number;
@@ -51,7 +61,7 @@ export interface UserSettings {
   showShortcuts: boolean;
   showTopWorldCapsule: boolean; // Hidden inside settings, off by default
   dailyEnvironmentRotation: boolean; // Rotates to a new living world every day
-  /** "Keep this forever": pin the current world and stop daily rotation. */
+  /** "Keep this forever" for worlds (animals and flows have their own pins). */
   keepWorld: boolean;
   lastRotationDate: string; // local date YYYY-MM-DD
 }

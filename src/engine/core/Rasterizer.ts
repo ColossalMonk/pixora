@@ -50,6 +50,11 @@ export class Rasterizer {
     this.backdropCss = `radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.45) 100%), linear-gradient(to bottom, ${linear})`;
   }
 
+  /** Paints the backdrop into another canvas (crossfade captures). */
+  public paintBackdropTo(ctx: CanvasRenderingContext2D, width: number, height: number): void {
+    this.paintBackdrop(ctx, width, height);
+  }
+
   /** Paints the backdrop into the canvas itself (gallery snapshots, which are opaque). */
   private paintBackdrop(ctx: CanvasRenderingContext2D, width: number, height: number): void {
     const stops = this.backdropStops;

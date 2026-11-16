@@ -3,38 +3,26 @@ import { UnderwaterWorld } from './UnderwaterWorld';
 import { InteractiveWater } from './InteractiveWater';
 import { FrogPond } from './FrogPond';
 import { CosmicAurora } from './CosmicAurora';
-import { AbstractFlow } from './AbstractFlow';
 import { Campfire } from './Campfire';
 import { ZenGarden } from './ZenGarden';
 import { Meadow } from './Meadow';
 import { WinterPines } from './WinterPines';
 import { FireflyForest } from './FireflyForest';
 import { RainyCity } from './RainyCity';
+import { CurlFlow } from '../flows/CurlFlow';
+import { FishSchool } from '../animals/FishSchool';
+import { Fireflies } from '../animals/Fireflies';
 
-export const ENVIRONMENT_IDS: EnvironmentId[] = [
-  'underwater',
-  'campfire',
-  'ripples',
-  'meadow',
-  'cosmic-aurora',
-  'zen-garden',
-  'frog-pond',
-  'winter-pines',
-  'firefly-forest',
-  'rainy-city',
-  'abstract-flow',
-];
-
+/** Creates any scene (world, animal or flow) by id. */
 export function createEnvironment(id: EnvironmentId): IEnvironment {
   switch (id) {
+    // Worlds
     case 'ripples':
       return new InteractiveWater();
     case 'frog-pond':
       return new FrogPond();
     case 'cosmic-aurora':
       return new CosmicAurora();
-    case 'abstract-flow':
-      return new AbstractFlow();
     case 'campfire':
       return new Campfire();
     case 'zen-garden':
@@ -47,6 +35,14 @@ export function createEnvironment(id: EnvironmentId): IEnvironment {
       return new FireflyForest();
     case 'rainy-city':
       return new RainyCity();
+    // Animals
+    case 'fish':
+      return new FishSchool();
+    case 'fireflies':
+      return new Fireflies();
+    // Flows
+    case 'curl':
+      return new CurlFlow();
     case 'underwater':
     default:
       return new UnderwaterWorld();

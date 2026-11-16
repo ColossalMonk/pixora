@@ -22,9 +22,15 @@ if (!fs.existsSync(RELEASE_DIR)) {
 if (fs.existsSync(ZIP_FILE)) fs.unlinkSync(ZIP_FILE);
 if (fs.existsSync(LATEST_ZIP)) fs.unlinkSync(LATEST_ZIP);
 
-// Use PowerShell Compress-Archive with suppressed progress on Windows
+// Zip with forward-slash paths so the archive extracts correctly on every OS.
+// (PowerShell 5's Compress-Archive writes backslashes, which breaks on macOS/Linux.)
 console.log(`Packaging extension into ${ZIP_FILE}...`);
-const psCommand = `$ProgressPreference = 'SilentlyContinue'; Compress-Archive -Path "${DIST_DIR}\\*" -DestinationPath "${ZIP_FILE}" -Force; Copy-Item "${ZIP_FILE}" "${LATEST_ZIP}" -Force`;
-execSync(`powershell -NoProfile -Command "${psCommand}"`, { stdio: 'inherit' });
+if (process.platform === 'win32') {
+  const tar = path.join(process.env.SystemRoot || 'C:\Windows', 'System32', 'tar.exe'); // bsdtar
+  execSync(`"${tar}" -a -c -f "${ZIP_FILE}" -C "${DIST_DIR}" *`, { stdio: 'inherit', shell: 'cmd.exe' });
+} else {
+  execSync(`cd "${DIST_DIR}" && zip -r -X "${ZIP_FILE}" .`, { stdio: 'inherit' });
+}
+fs.copyFileSync(ZIP_FILE, LATEST_ZIP);
 
 console.log(`Release created successfully: ${ZIP_FILE}`);

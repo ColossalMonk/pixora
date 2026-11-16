@@ -78,7 +78,16 @@ All fonts are bundled locally. The only network calls are weather (Open-Meteo, p
 
 ## Installation & Setup
 
-### Option 1: Load as Unpacked Extension in Chrome / Edge / Brave
+### Quick install (no build needed)
+
+1. Download **`pixora-chrome-extension.zip`** from the [latest release](https://github.com/ColossalMonk/pixora/releases/latest) and unzip it into a folder you'll keep (the browser loads it from there).
+2. Open `chrome://extensions` (Chrome / Brave) or `edge://extensions` (Edge) and turn on **Developer mode**.
+3. Click **Load unpacked** and pick the unzipped folder (the one containing `manifest.json`).
+4. Open a new tab. If the browser asks whether to keep the new tab page, choose **Keep it**.
+
+To update later, download the new zip, replace the folder's contents, and press the reload icon on the Pixora card in the extensions page. Your settings and wallpaper are kept.
+
+### Option 1: Build from source and load unpacked
 
 1. Download or clone this repository:
    ```bash

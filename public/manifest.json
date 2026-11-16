@@ -2,15 +2,12 @@
   "manifest_version": 3,
   "name": "Pixora — Generative ASCII New Tab",
   "version": "2.0.0",
-  "description": "An immersive, generative-art browser New Tab experience combining character-based worlds with a minimalist productivity suite.",
+  "description": "Living ASCII worlds, animals and flows for your new tab, with a calm clock, search, shortcuts and weather.",
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
   "permissions": [
     "storage"
-  ],
-  "optional_permissions": [
-    "history"
   ],
   "icons": {
     "16": "icons/icon16.png",

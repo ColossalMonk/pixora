@@ -1,29 +1,28 @@
-import { IEnvironment, EnvironmentId } from '../../types/environment';
-import { MouseState } from '../../types/engine';
-import { RenderGrid } from '../core/RenderGrid';
+import { EnvironmentId, IEnvironment, WorldContext } from '../../types/environment';
+import { ResolvedStyle } from '../../types/engine';
 
 export abstract class BaseEnvironment implements IEnvironment {
   public abstract readonly id: EnvironmentId;
-  protected width: number = 800;
-  protected height: number = 600;
-  protected time: number = 0;
+  public abstract readonly preferredStyle: ResolvedStyle;
+  public abstract readonly backdrop: number[];
+  /** Simulation clock in seconds. */
+  protected time = 0;
 
-  public init(grid: RenderGrid): void {
-    this.width = grid.cols * grid.cellWidth;
-    this.height = grid.rows * grid.cellHeight;
-    this.time = 0;
+  public abstract init(ctx: WorldContext): void;
+  public abstract update(dt: number, ctx: WorldContext): void;
+  public abstract render(ctx: WorldContext): void;
+
+  /** Re-seed on resize so populations and layouts match the new viewport. */
+  public resize(ctx: WorldContext): void {
+    const t = this.time;
+    this.init(ctx);
+    this.time = t;
   }
 
-  public abstract update(deltaTime: number, mouse: MouseState, grid: RenderGrid): void;
+  public destroy(): void {}
 
-  public abstract render(grid: RenderGrid): void;
-
-  public resize(width: number, height: number, _grid: RenderGrid): void {
-    this.width = width;
-    this.height = height;
-  }
-
-  public destroy(): void {
-    // Optional cleanup
+  /** Per-cell scratch buffer helper. */
+  protected ensure(buf: Float32Array<ArrayBuffer>, size: number): Float32Array<ArrayBuffer> {
+    return buf.length === size ? buf : new Float32Array(size);
   }
 }

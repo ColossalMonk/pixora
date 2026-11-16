@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AsciiCanvas } from './components/canvas/AsciiCanvas';
 import { ConversationalGreeting } from './components/greeting/ConversationalGreeting';
 import { CentralSearchBar } from './components/search/CentralSearchBar';
@@ -9,16 +9,9 @@ import { EnvironmentGallery } from './components/gallery/EnvironmentGallery';
 import { ImageConverterModal } from './components/converter/ImageConverterModal';
 import { SettingsDrawer } from './components/settings/SettingsDrawer';
 import { useSettingsStore } from './store/useSettingsStore';
-import { EnvironmentId } from './types/environment';
-import { Compass, Image as ImageIcon, Sliders, Sparkles } from 'lucide-react';
-
-const WORLDS_CAPSULE: { id: EnvironmentId; label: string }[] = [
-  { id: 'underwater', label: 'Ocean' },
-  { id: 'ripples', label: 'Ripples' },
-  { id: 'frog-pond', label: 'Pond' },
-  { id: 'cosmic-aurora', label: 'Aurora' },
-  { id: 'abstract-flow', label: 'Flow' },
-];
+import { WorldBar } from './components/worlds/WorldBar';
+import { WORLDS } from './data/worlds';
+import { Compass, Image as ImageIcon, Sliders } from 'lucide-react';
 
 export const App: React.FC = () => {
   const { loadSettings, showTopWorldCapsule, activeEnvironment, setEnvironment } = useSettingsStore();
@@ -26,6 +19,7 @@ export const App: React.FC = () => {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isConverterOpen, setIsConverterOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const focusRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -34,7 +28,7 @@ export const App: React.FC = () => {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#08080a] text-slate-100 font-sans select-none">
       {/* 1. Generative ASCII Animation Canvas (Background Layer) */}
-      <AsciiCanvas />
+      <AsciiCanvas focusRef={focusRef} />
 
       {/* 2. Top Navigation Bar (Productivity Header) */}
       <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4 md:p-6 pointer-events-none">
@@ -49,7 +43,7 @@ export const App: React.FC = () => {
             aria-label="Quick World Switcher"
             className="hidden md:flex items-center gap-1 p-1 rounded-full glass-panel shadow-lg pointer-events-auto border border-white/10 animate-fade-in"
           >
-            {WORLDS_CAPSULE.map((w) => {
+            {WORLDS.map((w) => {
               const isActive = activeEnvironment === w.id;
               return (
                 <button
@@ -62,7 +56,7 @@ export const App: React.FC = () => {
                       : 'text-slate-300 hover:text-white hover:bg-white/5'
                   }`}
                 >
-                  {w.label}
+                  {w.short}
                 </button>
               );
             })}
@@ -107,7 +101,7 @@ export const App: React.FC = () => {
 
       {/* 3. Center Dashboard Interface */}
       <main className="relative z-10 w-full h-full flex flex-col items-center justify-center p-4 pointer-events-none">
-        <div className="pointer-events-auto w-full flex flex-col items-center">
+        <div ref={focusRef} className="pointer-events-auto w-full max-w-xl flex flex-col items-center">
           {/* Ambient Typography Clock */}
           <div className="mb-4">
             <AmbientClock />
@@ -124,13 +118,8 @@ export const App: React.FC = () => {
         </div>
       </main>
 
-      {/* 4. Bottom Footer Info Pill */}
-      <footer className="absolute bottom-3 left-0 right-0 z-20 flex justify-center pointer-events-none">
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full glass-panel-subtle text-[10px] text-slate-400 font-mono tracking-wide pointer-events-auto">
-          <Sparkles className="w-3 h-3 text-teal-400" />
-          <span>Pixora • Interactive Generative ASCII Engine</span>
-        </div>
-      </footer>
+      {/* 4. World switcher + Keep this forever */}
+      <WorldBar />
 
       {/* 5. Modals & Drawers */}
       <EnvironmentGallery

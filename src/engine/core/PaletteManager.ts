@@ -1,76 +1,55 @@
 import { ColorTheme } from '../../types/engine';
+import { gradientLUT, hex, mix } from './Color';
 
-export interface RGB {
-  r: number;
-  g: number;
-  b: number;
+interface ThemeDef {
+  /** Background tint blended into each world's own backdrop. */
+  bg: number;
+  /** Dark → bright colour stops that glyph luminance maps onto. */
+  stops: [number, number][];
 }
 
-export const PALETTES: Record<ColorTheme, { bg: RGB; primary: RGB; secondary: RGB; highlight: RGB }> = {
+export const THEMES: Record<Exclude<ColorTheme, 'true-color'>, ThemeDef> = {
   'phosphor-amber': {
-    bg: { r: 12, g: 8, b: 4 },
-    primary: { r: 245, g: 158, b: 11 },     // Amber 500
-    secondary: { r: 180, g: 83, b: 9 },     // Amber 700
-    highlight: { r: 254, g: 243, b: 199 },  // Amber 100
+    bg: hex('#0c0804'),
+    stops: [[0, hex('#3b1d06')], [0.45, hex('#b45309')], [0.75, hex('#f59e0b')], [1, hex('#fef3c7')]],
   },
   'matrix-green': {
-    bg: { r: 4, g: 12, b: 6 },
-    primary: { r: 34, g: 197, b: 94 },      // Emerald 500
-    secondary: { r: 21, g: 128, b: 61 },    // Emerald 700
-    highlight: { r: 220, g: 252, b: 231 },  // Emerald 100
+    bg: hex('#040c06'),
+    stops: [[0, hex('#052e16')], [0.45, hex('#15803d')], [0.75, hex('#22c55e')], [1, hex('#dcfce7')]],
   },
   'cyberpunk-neon': {
-    bg: { r: 10, g: 6, b: 18 },
-    primary: { r: 236, g: 72, b: 153 },     // Pink 500
-    secondary: { r: 99, g: 102, b: 241 },   // Indigo 500
-    highlight: { r: 56, g: 189, b: 248 },   // Sky 400
+    bg: hex('#0a0612'),
+    stops: [[0, hex('#1e1b4b')], [0.35, hex('#6366f1')], [0.65, hex('#ec4899')], [1, hex('#7dd3fc')]],
   },
   'ice-blue': {
-    bg: { r: 6, g: 12, b: 18 },
-    primary: { r: 56, g: 189, b: 248 },     // Sky 400
-    secondary: { r: 14, g: 116, b: 144 },   // Cyan 700
-    highlight: { r: 240, g: 249, b: 255 },  // Sky 50
+    bg: hex('#060c12'),
+    stops: [[0, hex('#082f49')], [0.45, hex('#0e7490')], [0.75, hex('#38bdf8')], [1, hex('#f0f9ff')]],
   },
   'claude-warm': {
-    bg: { r: 18, g: 16, b: 15 },
-    primary: { r: 217, g: 119, b: 87 },     // Claude terracotta
-    secondary: { r: 168, g: 145, b: 128 },  // Warm gray
-    highlight: { r: 250, g: 245, b: 235 },  // Warm cream
-  },
-  'true-color': {
-    bg: { r: 8, g: 8, b: 10 },
-    primary: { r: 220, g: 220, b: 230 },
-    secondary: { r: 140, g: 140, b: 160 },
-    highlight: { r: 255, g: 255, b: 255 },
+    bg: hex('#12100f'),
+    stops: [[0, hex('#3a2a22')], [0.4, hex('#a89180')], [0.7, hex('#d97757')], [1, hex('#faf5eb')]],
   },
   'monochrome-white': {
-    bg: { r: 8, g: 8, b: 10 },
-    primary: { r: 210, g: 215, b: 225 },
-    secondary: { r: 100, g: 105, b: 115 },
-    highlight: { r: 255, g: 255, b: 255 },
+    bg: hex('#08080a'),
+    stops: [[0, hex('#27272a')], [0.5, hex('#71717a')], [0.8, hex('#d4d4d8')], [1, hex('#ffffff')]],
   },
 };
 
-/**
- * Returns an interpolated RGB color based on intensity [0..1] and theme
- */
-export function getColorForIntensity(intensity: number, theme: ColorTheme): RGB {
-  const palette = PALETTES[theme] || PALETTES['monochrome-white'];
-  const t = Math.max(0, Math.min(1, intensity));
+const lutCache = new Map<ColorTheme, Uint32Array>();
 
-  if (t < 0.6) {
-    const factor = t / 0.6;
-    return {
-      r: Math.round(palette.secondary.r * (1 - factor) + palette.primary.r * factor),
-      g: Math.round(palette.secondary.g * (1 - factor) + palette.primary.g * factor),
-      b: Math.round(palette.secondary.b * (1 - factor) + palette.primary.b * factor),
-    };
-  } else {
-    const factor = (t - 0.6) / 0.4;
-    return {
-      r: Math.round(palette.primary.r * (1 - factor) + palette.highlight.r * factor),
-      g: Math.round(palette.primary.g * (1 - factor) + palette.highlight.g * factor),
-      b: Math.round(palette.primary.b * (1 - factor) + palette.highlight.b * factor),
-    };
+/** 256-entry luminance → theme colour table, or null for true colour. */
+export function themeLUT(theme: ColorTheme): Uint32Array | null {
+  if (theme === 'true-color') return null;
+  let lut = lutCache.get(theme);
+  if (!lut) {
+    lut = gradientLUT(THEMES[theme].stops);
+    lutCache.set(theme, lut);
   }
+  return lut;
+}
+
+/** Re-tints a world backdrop colour for the active theme. */
+export function themeBackdrop(color: number, theme: ColorTheme): number {
+  if (theme === 'true-color') return color;
+  return mix(THEMES[theme].bg, color, 0.25);
 }

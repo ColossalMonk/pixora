@@ -1,5 +1,16 @@
 import { StorageService } from './storageService';
 
+/** Best-effort city from the browser's time zone (e.g. "Asia/Kolkata" → "Kolkata"). No network, no prompt. */
+export function guessCity(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    const last = tz.split('/').pop() || '';
+    return last.replace(/_/g, ' ');
+  } catch {
+    return '';
+  }
+}
+
 export interface WeatherData {
   city: string;
   temp: number;
@@ -7,6 +18,8 @@ export interface WeatherData {
   icon: string;
   isDay: boolean;
   timestamp: number;
+  /** Which request this answers, so a changed city or unit never shows stale data. */
+  key?: string;
 }
 
 const CACHE_KEY = 'pixora_weather_cache';
@@ -14,20 +27,21 @@ const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 export class WeatherService {
   public static async getWeather(
-    cityName = 'San Francisco',
+    cityName = '',
     useGeo = false,
     unit: 'celsius' | 'fahrenheit' = 'celsius'
   ): Promise<WeatherData | null> {
     try {
-      // 1. Check cache
+      const city = cityName.trim() || guessCity();
+      const requestKey = `${useGeo ? 'geo' : city.toLowerCase()}|${unit}`;
       const cached = await StorageService.get<WeatherData | null>(CACHE_KEY, null);
-      if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      if (cached && cached.key === requestKey && Date.now() - cached.timestamp < CACHE_TTL_MS) {
         return cached;
       }
 
-      let lat = 37.7749;
-      let lon = -122.4194;
-      let displayCity = cityName || 'San Francisco';
+      let lat = NaN;
+      let lon = NaN;
+      let displayCity = city;
 
       if (useGeo && typeof navigator !== 'undefined' && navigator.geolocation) {
         try {
@@ -40,9 +54,9 @@ export class WeatherService {
         }
       }
 
-      if (!useGeo && cityName) {
+      if (Number.isNaN(lat) && city) {
         const geoRes = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`
         );
         const geoData = await geoRes.json();
         if (geoData.results && geoData.results.length > 0) {
@@ -51,6 +65,8 @@ export class WeatherService {
           displayCity = geoData.results[0].name;
         }
       }
+
+      if (Number.isNaN(lat)) return null;
 
       // Fetch live weather from Open-Meteo
       const tempParam = unit === 'fahrenheit' ? '&temperature_unit=fahrenheit' : '';
@@ -72,6 +88,7 @@ export class WeatherService {
         icon,
         isDay,
         timestamp: Date.now(),
+        key: requestKey,
       };
 
       await StorageService.set(CACHE_KEY, result);

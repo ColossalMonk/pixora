@@ -1,4 +1,4 @@
-import { CharacterStyle } from '../../types/engine';
+import { ResolvedStyle } from '../../types/engine';
 import { getCharForLuminance } from '../core/Charsets';
 
 export interface ProcessedAsciiResult {
@@ -13,7 +13,7 @@ export class ImageProcessor {
   public static async processImage(
     file: File | Blob | string,
     targetCols = 100,
-    style: CharacterStyle = 'ascii-standard',
+    style: ResolvedStyle = 'ascii-standard',
     invert = false,
     useSobel = true
   ): Promise<ProcessedAsciiResult> {

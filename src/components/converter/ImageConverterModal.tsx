@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
+import { useEscape } from '../common/useEscape';
 import { X, Upload, Copy, Check, Download, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { ImageProcessor, ProcessedAsciiResult } from '../../engine/image-converter/ImageProcessor';
-import { CharacterStyle } from '../../types/engine';
+import { ResolvedStyle } from '../../types/engine';
 
 interface ImageConverterModalProps {
   isOpen: boolean;
@@ -11,29 +12,45 @@ interface ImageConverterModalProps {
 export const ImageConverterModal: React.FC<ImageConverterModalProps> = ({ isOpen, onClose }) => {
   const [file, setFile] = useState<File | null>(null);
   const [cols, setCols] = useState(100);
-  const [style, setStyle] = useState<CharacterStyle>('ascii-standard');
+  const [style, setStyle] = useState<ResolvedStyle>('ascii-standard');
   const [invert, setInvert] = useState(false);
   const [useSobel, setUseSobel] = useState(true);
   const [result, setResult] = useState<ProcessedAsciiResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Only the latest conversion may write its result (slider drags fire many).
+  const requestRef = useRef(0);
+  useEscape(isOpen, onClose);
 
   if (!isOpen) return null;
 
-  const processFile = async (selectedFile: File) => {
+  const run = async (f: File, c: number, st: ResolvedStyle, inv: boolean, sob: boolean) => {
+    const id = ++requestRef.current;
     setLoading(true);
-    setFile(selectedFile);
     try {
-      const res = await ImageProcessor.processImage(selectedFile, cols, style, invert, useSobel);
-      setResult(res);
+      const res = await ImageProcessor.processImage(f, c, st, inv, sob);
+      if (id === requestRef.current) setResult(res);
     } catch (e) {
       console.error(e);
-      alert('Failed to process image');
+      if (id === requestRef.current) alert('Could not read that image.');
     } finally {
-      setLoading(false);
+      if (id === requestRef.current) setLoading(false);
     }
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const f = Array.from(e.dataTransfer.files).find((x) => x.type.startsWith('image/'));
+    if (f) processFile(f);
+  };
+
+  const processFile = (selectedFile: File) => {
+    setFile(selectedFile);
+    run(selectedFile, cols, style, invert, useSobel);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,15 +66,7 @@ export const ImageConverterModal: React.FC<ImageConverterModalProps> = ({ isOpen
     newSobel = useSobel
   ) => {
     if (!file) return;
-    setLoading(true);
-    try {
-      const res = await ImageProcessor.processImage(file, newCols, newStyle, newInvert, newSobel);
-      setResult(res);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+    await run(file, newCols, newStyle, newInvert, newSobel);
   };
 
   const handleCopy = () => {
@@ -116,6 +125,13 @@ export const ImageConverterModal: React.FC<ImageConverterModalProps> = ({ isOpen
           {!result && !loading && (
             <div
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={onDrop}
+              data-dragging={dragging || undefined}
               className="border-2 border-dashed border-white/15 hover:border-teal-400/50 rounded-2xl p-12 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-white/5"
             >
               <Upload className="w-10 h-10 text-slate-400 mb-3" />
@@ -143,7 +159,7 @@ export const ImageConverterModal: React.FC<ImageConverterModalProps> = ({ isOpen
                   <select
                     value={style}
                     onChange={(e) => {
-                      const s = e.target.value as CharacterStyle;
+                      const s = e.target.value as ResolvedStyle;
                       setStyle(s);
                       handleReprocess(cols, s, invert, useSobel);
                     }}
@@ -153,6 +169,7 @@ export const ImageConverterModal: React.FC<ImageConverterModalProps> = ({ isOpen
                     <option value="ascii-dense">Dense ASCII (70)</option>
                     <option value="blocks">Blocks & Shading</option>
                     <option value="geometric">Geometric</option>
+                    <option value="dots">Dots</option>
                   </select>
                 </div>
 

@@ -2,77 +2,101 @@ import React, { useEffect, useRef } from 'react';
 import { Engine } from '../../engine/core/Engine';
 import { useSettingsStore } from '../../store/useSettingsStore';
 
-export const AsciiCanvas: React.FC = () => {
+interface AsciiCanvasProps {
+  /** Element whose box the art should fade behind (clock + search + shortcuts). */
+  focusRef?: React.RefObject<HTMLElement | null>;
+}
+
+export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<Engine | null>(null);
 
   const {
+    isLoaded,
     activeEnvironment,
     characterStyle,
     colorTheme,
     fontSize,
     charDensity,
     animationSpeed,
+    interactionIntensity,
     reducedMotion,
     performanceTier,
+    calmCenter,
     dimBackground,
   } = useSettingsStore();
 
-  // Initialize engine once on mount
+  // Create the engine once, after saved settings are in (avoids a flash of the default world).
   useEffect(() => {
-    if (!canvasRef.current) return;
-
+    if (!canvasRef.current || !isLoaded || engineRef.current) return;
+    const s = useSettingsStore.getState();
     const engine = new Engine({
+      fontSize: s.fontSize,
+      charDensity: s.charDensity,
+      style: s.characterStyle,
+      colorTheme: s.colorTheme,
+      animationSpeed: s.animationSpeed,
+      interactionIntensity: s.interactionIntensity,
+      reducedMotion: s.reducedMotion,
+      performanceTier: s.performanceTier,
+      calmCenter: s.calmCenter,
+    });
+    engine.setEnvironment(s.activeEnvironment);
+    engine.attach(canvasRef.current);
+    engineRef.current = engine;
+  }, [isLoaded]);
+
+  useEffect(
+    () => () => {
+      engineRef.current?.detach();
+      engineRef.current = null;
+    },
+    []
+  );
+
+  useEffect(() => {
+    engineRef.current?.setEnvironment(activeEnvironment);
+  }, [activeEnvironment]);
+
+  useEffect(() => {
+    engineRef.current?.updateConfig({
       fontSize,
       charDensity,
       style: characterStyle,
       colorTheme,
       animationSpeed,
+      interactionIntensity,
       reducedMotion,
       performanceTier,
+      calmCenter,
     });
+  }, [characterStyle, colorTheme, fontSize, charDensity, animationSpeed, interactionIntensity, reducedMotion, performanceTier, calmCenter]);
 
-    engine.attach(canvasRef.current);
-    engine.setEnvironment(activeEnvironment);
-    engineRef.current = engine;
-
-    return () => {
-      engine.detach();
-      engineRef.current = null;
+  // Track the central UI box so the engine can keep the art calm behind it.
+  useEffect(() => {
+    const el = focusRef?.current;
+    if (!el || !isLoaded) return;
+    const push = () => {
+      const r = el.getBoundingClientRect();
+      engineRef.current?.setFocusRect(r.width > 0 ? { x: r.x, y: r.y, w: r.width, h: r.height } : null);
     };
-  }, []);
-
-  // Sync environment
-  useEffect(() => {
-    if (engineRef.current) {
-      engineRef.current.setEnvironment(activeEnvironment);
-    }
-  }, [activeEnvironment]);
-
-  // Sync engine configuration
-  useEffect(() => {
-    if (engineRef.current) {
-      engineRef.current.updateConfig({
-        fontSize,
-        charDensity,
-        style: characterStyle,
-        colorTheme,
-        animationSpeed,
-        reducedMotion,
-        performanceTier,
-      });
-    }
-  }, [characterStyle, colorTheme, fontSize, charDensity, animationSpeed, reducedMotion, performanceTier]);
+    const ro = new ResizeObserver(push);
+    ro.observe(el);
+    window.addEventListener('resize', push);
+    const id = window.setTimeout(push, 50);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', push);
+      window.clearTimeout(id);
+    };
+  }, [focusRef, isLoaded]);
 
   return (
-    <div className="absolute inset-0 pointer-events-auto overflow-hidden">
-      <canvas
-        ref={canvasRef}
-        className="block w-full h-full cursor-crosshair"
+    <div className="absolute inset-0 overflow-hidden">
+      <canvas ref={canvasRef} className="block w-full h-full cursor-crosshair touch-none" aria-hidden="true" />
+      <div
+        className={`absolute inset-0 bg-black pointer-events-none transition-opacity duration-500 ${dimBackground ? 'opacity-40' : 'opacity-0'}`}
       />
-      {dimBackground && (
-        <div className="absolute inset-0 bg-black/40 pointer-events-none transition-opacity duration-300" />
-      )}
     </div>
   );
 };

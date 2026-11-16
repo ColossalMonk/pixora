@@ -1,7 +1,8 @@
 import React from 'react';
 import { X, Sliders, Palette, Monitor, Search, Cloud, User, Eye } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import { CharacterStyle, ColorTheme } from '../../types/engine';
+import { CharacterStyle, ColorTheme, PerformanceTier } from '../../types/engine';
+import { useEscape } from '../common/useEscape';
 import { SearchEngineId } from '../../types/settings';
 
 interface SettingsDrawerProps {
@@ -31,13 +32,23 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
     showShortcuts,
     showTopWorldCapsule,
     dailyEnvironmentRotation,
+    keepWorld,
+    calmCenter,
+    interactionIntensity,
     updateSettings,
   } = useSettingsStore();
+  useEscape(isOpen, onClose);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade-in"
+      onPointerDown={(e) => e.target === e.currentTarget && onClose()}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Preferences"
+    >
       <div className="glass-panel w-full max-w-md h-full p-6 overflow-y-auto border-l border-white/10 shadow-2xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
@@ -76,13 +87,15 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
                   onChange={(e) => updateSettings({ characterStyle: e.target.value as CharacterStyle })}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-slate-200 outline-none"
                 >
-                  <option value="ascii-standard">Classic ASCII Ramp (10-level)</option>
-                  <option value="ascii-dense">Dense ASCII Ramp (70-level)</option>
-                  <option value="blocks">Blocks & Half-Shades (░▒▓█)</option>
-                  <option value="geometric">Geometric Symbols (▲●■◆)</option>
-                  <option value="directional">Directional Vectors (→↗↑↖)</option>
-                  <option value="pixel-blocks">Pixel Art Blocks (▀▄▖▗)</option>
+                  <option value="auto">Auto (each world's own style)</option>
+                  <option value="ascii-standard">Classic ASCII ( .:-=+*#%@)</option>
+                  <option value="ascii-dense">Dense ASCII (70 glyphs)</option>
+                  <option value="braille">Braille dots (fine detail ⣿)</option>
+                  <option value="blocks">Blocks & shades (░▒▓█)</option>
+                  <option value="geometric">Geometric (·∘○◇◆●■)</option>
+                  <option value="dots">Dots (·∙•●)</option>
                 </select>
+                <p className="text-[10px] text-slate-400 mt-1">Applies to water, light, aurora and trails. Creatures keep their own shapes.</p>
               </div>
 
               <div>
@@ -100,6 +113,22 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
                   <option value="claude-warm">Claude Warm Terracotta</option>
                   <option value="monochrome-white">Monochrome White</option>
                 </select>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-slate-400 mb-1">
+                  <span>Calm zone behind clock & search</span>
+                  <span className="font-mono">{Math.round(calmCenter * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="0.9"
+                  step="0.05"
+                  value={calmCenter}
+                  onChange={(e) => updateSettings({ calmCenter: Number(e.target.value) })}
+                  className="w-full accent-teal-400 cursor-pointer"
+                />
               </div>
 
               <div className="flex items-center justify-between">
@@ -126,15 +155,16 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
                 <label className="block text-slate-400 mb-1">Hardware Performance Tier</label>
                 <select
                   value={performanceTier}
-                  onChange={(e) => updateSettings({ performanceTier: e.target.value as 'low' | 'balanced' | 'high' })}
+                  onChange={(e) => updateSettings({ performanceTier: e.target.value as PerformanceTier })}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-slate-200 outline-none"
                 >
-                  <option value="low">Low / Battery Saver (Old Laptops & Integrated GPUs)</option>
-                  <option value="balanced">Balanced (Locked 60 FPS)</option>
-                  <option value="high">Ultra High (Full Density & Caustics)</option>
+                  <option value="auto">Auto (adapts to this device)</option>
+                  <option value="low">Battery saver (30 fps, fewer cells)</option>
+                  <option value="balanced">Balanced (60 fps)</option>
+                  <option value="high">High (more creatures and particles)</option>
                 </select>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Low tier scales grid density down 25% and batches canvas draw calls for low-end hardware.
+                  Auto starts at 60 fps and steps down by itself if this machine struggles.
                 </p>
               </div>
 
@@ -185,8 +215,24 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
                 />
               </div>
 
+              <div>
+                <div className="flex justify-between text-slate-400 mb-1">
+                  <span>Interaction Strength</span>
+                  <span className="font-mono">{interactionIntensity.toFixed(1)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value={interactionIntensity}
+                  onChange={(e) => updateSettings({ interactionIntensity: Number(e.target.value) })}
+                  className="w-full accent-teal-400 cursor-pointer"
+                />
+              </div>
+
               <div className="flex items-center justify-between">
-                <span className="text-slate-300">Reduced Motion Mode</span>
+                <span className="text-slate-300">Reduced Motion (still frame)</span>
                 <input
                   type="checkbox"
                   checked={reducedMotion}
@@ -250,7 +296,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
                   type="text"
                   value={weatherCity}
                   onChange={(e) => updateSettings({ weatherCity: e.target.value })}
-                  placeholder="e.g. London, Tokyo, New York"
+                  placeholder="Empty = city from your time zone"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-slate-200 outline-none"
                 />
               </div>
@@ -358,13 +404,26 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
 
               <label className="flex items-center justify-between text-slate-300 cursor-pointer pt-3 border-t border-white/5">
                 <div>
-                  <div className="font-medium text-slate-200">Daily World Rotation (24h)</div>
-                  <div className="text-[10px] text-slate-400">Refresh to a fresh living world every 24 hours</div>
+                  <div className="font-medium text-slate-200">New world every day</div>
+                  <div className="text-[10px] text-slate-400">Switches at your local midnight</div>
                 </div>
                 <input
                   type="checkbox"
                   checked={dailyEnvironmentRotation}
                   onChange={(e) => updateSettings({ dailyEnvironmentRotation: e.target.checked })}
+                  className="accent-teal-400"
+                />
+              </label>
+
+              <label className="flex items-center justify-between text-slate-300 cursor-pointer">
+                <div>
+                  <div className="font-medium text-slate-200">Keep this world forever</div>
+                  <div className="text-[10px] text-slate-400">Same as the switch at the bottom right</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={keepWorld}
+                  onChange={(e) => updateSettings({ keepWorld: e.target.checked })}
                   className="accent-teal-400"
                 />
               </label>

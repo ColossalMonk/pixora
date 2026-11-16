@@ -1,11 +1,15 @@
+/** What the user can pick. 'auto' lets each world use the style it was designed for. */
 export type CharacterStyle =
+  | 'auto'
   | 'ascii-standard'
   | 'ascii-dense'
-  | 'braille'
-  | 'geometric'
   | 'blocks'
-  | 'directional'
-  | 'pixel-blocks';
+  | 'geometric'
+  | 'braille'
+  | 'dots';
+
+/** A concrete style a world renders its fields with. */
+export type ResolvedStyle = Exclude<CharacterStyle, 'auto'>;
 
 export type ColorTheme =
   | 'phosphor-amber'
@@ -16,36 +20,38 @@ export type ColorTheme =
   | 'true-color'
   | 'monochrome-white';
 
-export interface GridCell {
-  char: string;
-  r: number;
-  g: number;
-  b: number;
-  a: number;
-}
+export type PerformanceTier = 'auto' | 'low' | 'balanced' | 'high';
 
 export interface EngineConfig {
   fontSize: number;
-  charDensity: number; // 0.5 (sparse) to 2.0 (dense)
+  charDensity: number; // 0.6 (sparse) to 1.6 (dense)
   style: CharacterStyle;
   colorTheme: ColorTheme;
-  invertLuminance: boolean;
-  contrast: number; // 0.5 to 2.0
-  animationSpeed: number; // 0.5 to 2.0
-  performanceTier: 'low' | 'balanced' | 'high';
+  animationSpeed: number; // 0.4 to 2.0
+  interactionIntensity: number; // 0 to 2
+  performanceTier: PerformanceTier;
   reducedMotion: boolean;
+  /** 0..1 — how strongly the art fades behind the central UI. */
+  calmCenter: number;
 }
 
-export interface MouseState {
+export interface PointerClick {
   x: number;
   y: number;
-  prevX: number;
-  prevY: number;
+}
+
+/** Pointer state handed to worlds every step, in CSS pixels. */
+export interface InputState {
+  x: number;
+  y: number;
+  /** Velocity in px / second. */
   vx: number;
   vy: number;
-  isDown: boolean;
-  clicked: boolean;
-  clickX: number;
-  clickY: number;
-  radius: number;
+  /** Pointer is inside the window and over the art (not over a panel or button). */
+  active: boolean;
+  down: boolean;
+  /** Clicks on the art since the last step. */
+  clicks: PointerClick[];
+  /** Scales every interaction force, from settings. */
+  intensity: number;
 }

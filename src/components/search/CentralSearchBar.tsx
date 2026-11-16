@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, Check, Sparkles, Globe, Shield, Flame, Compass } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import { SEARCH_ENGINES, SearchService } from '../../services/searchService';
+import { SEARCH_ENGINES, SearchService, asUrl } from '../../services/searchService';
 import { SearchEngineId } from '../../types/settings';
 
 const ENGINE_ICONS: Record<string, React.ReactNode> = {
@@ -21,6 +21,7 @@ export const CentralSearchBar: React.FC = () => {
 
   const { searchEngine, customSearchUrl, setSearchEngine } = useSettingsStore();
   const currentEngine = SEARCH_ENGINES[searchEngine] || SEARCH_ENGINES.google;
+  const looksLikeUrl = asUrl(query) !== null;
 
   // Press "/" to focus search; "Esc" to blur
   useEffect(() => {
@@ -32,8 +33,9 @@ export const CentralSearchBar: React.FC = () => {
       ) {
         e.preventDefault();
         inputRef.current?.focus();
-      } else if (e.key === 'Escape') {
-        inputRef.current?.blur();
+      } else if (e.key === 'Escape' && document.activeElement === inputRef.current) {
+        if (inputRef.current?.value) setQuery('');
+        else inputRef.current?.blur();
         setIsDropdownOpen(false);
       }
     };
@@ -120,7 +122,8 @@ export const CentralSearchBar: React.FC = () => {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={`Search with ${currentEngine.name} or type URL...`}
+          placeholder={`Search ${currentEngine.name}, type a URL, or !d / !b …`}
+          aria-label="Search or enter address"
           className="flex-1 bg-transparent border-none outline-none px-3 text-sm md:text-base text-slate-100 placeholder:text-slate-500 font-normal"
           autoFocus
         />
@@ -142,9 +145,9 @@ export const CentralSearchBar: React.FC = () => {
           <button
             type="submit"
             className="p-1.5 rounded-xl bg-teal-400/20 text-teal-300 hover:bg-teal-400/30 transition-colors"
-            title="Search"
+            title={looksLikeUrl ? 'Open address' : 'Search'}
           >
-            <Search className="w-4 h-4" />
+            {looksLikeUrl ? <Globe className="w-4 h-4" /> : <Search className="w-4 h-4" />}
           </button>
         </div>
       </form>

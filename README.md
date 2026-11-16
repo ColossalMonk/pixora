@@ -10,103 +10,38 @@
 ```
 
 > **Pixora** transforms the standard browser New Tab into an ambient, living digital sanctuary.  
-> Combining a pure-math, 60-FPS procedural character simulation engine with a minimalist productivity suite inspired by **Claude's conversational warmth**, **Arc's fluid minimalism**, and **Linear's interaction polish**.
+> Five living ASCII worlds drawn on a canvas, with a calm clock, search and shortcuts on top. A new world every day, or keep the one you love forever.
 
 ---
 
-## Live Feature Highlights
+## The worlds
 
-```mermaid
-graph LR
-    subgraph Engine ["Original Procedural ASCII Engine"]
-        E1["🌊 Underwater World (Boids & Jellyfish)"]
-        E2["💧 Interactive Water (Wave Heightfield)"]
-        E3["🐸 Frog & Pond (Biomechanical Kinematics)"]
-        E4["🌌 Cosmic Aurora (Multi-Octave Simplex Noise)"]
-        E5["🌀 Abstract Flow (Curl Noise Swarms)"]
-    end
+| World | What lives there | Play with it |
+| :--- | :--- | :--- |
+| **Underwater World** | Fish schools in three depth layers, big curious fish, pulsing jellyfish with soft tentacles, kelp, coral, light shafts and caustics | Hold the pointer still and big fish come to look · move fast and schools scatter · click for a bubble burst |
+| **Moonlit Lake** | Wave simulation lit by the moon, a shimmering moon path, pine treeline, drifting petals, fireflies, passing rain showers | Drag across the water for a wake · click for a drop · click the sky to call rain |
+| **Frog Pond** | Frogs that breathe, blink, leap between free lily pads, swim back and catch dragonflies; koi below the surface; reeds | Click the water to drop food for the koi · get close and frogs leap away |
+| **Northern Lights** | Two aurora curtains of vertical rays over sharp ridges, mirrored in a lake; stars and meteors | Move to push the curtains · click for a flare and a shooting star |
+| **Flow Fields** | Particles riding curl noise, leaving fine Braille-dot trails; the palette drifts between moods | Hover to stir a vortex · click for a shockwave |
 
-    subgraph Overlay ["Minimalist Productivity Overlay"]
-        P1["💬 Time-Aware Conversational Greeting"]
-        P2["🔍 Omni-Engine Search Bar ('/' Accelerator)"]
-        P3["🔗 Pinned Shortcuts & Google Favicons"]
-        P4["⛅ Ambient Weather & Typography Clock"]
-        P5["🎨 Visual Palette & Character Customizer"]
-        P6["🖼️ Image-to-ASCII Studio (Sobel Edge Filter)"]
-    end
+**Daily rotation:** a new world each day at your local midnight. Flip **Keep this forever** (bottom right) to pin the one you're on. The arrows next to it switch worlds by hand, and **Worlds** (top right) shows live previews of all five.
 
-    Engine === Overlay
-```
+## Look & feel
 
----
+- **Character style:** *Auto* (each world's own glyphs: vertical rays for the aurora, Braille for flow), or force Classic ASCII, Dense ASCII, Braille, Blocks, Geometric or Dots for water, light and trails. Creatures keep their own shapes.
+- **Colour themes:** True Color, Phosphor Amber, Matrix Emerald, Cyberpunk Neon, Ice Blue, Claude Warm, Monochrome.
+- **Calm zone:** the art fades softly behind the clock and search so text stays readable (adjustable).
+- **Interaction strength**, animation speed, font size and density are adjustable. **Reduced motion** (or the OS setting) shows a settled still frame.
 
-## 1. Five Signature Procedural Environments
+## Productivity overlay
 
-Pixora features five completely original living worlds running on mathematical and physical simulations:
+- Time-aware greeting (optionally with your name), clock and date.
+- Search with Google, DuckDuckGo, Bing, Brave, Ecosia or a custom URL. Typing an address (`github.com`, `localhost:5173`) opens it directly; bangs `!g !d !b !br !e` pick an engine for one search. `/` focuses search, `Esc` clears it.
+- Shortcuts with favicons.
+- Weather from Open-Meteo. With no city set, Pixora uses your time zone's city (no location prompt).
+- ASCII Studio: drop or pick an image and convert it to text with luminance ramps and Sobel edge strokes; copy or download as `.txt`.
 
-### 1. 🌊 Underwater World
-- **Schooling Fish:** Craig Reynolds' Boids flocking with dynamic separation, alignment, and cohesion steering weights, plus secondary swimming tail undulation (`>`, `<`, `~`, `-`).
-- **Kinematic Jellyfish:** Bell contractions with vertical propulsion and soft-body spring-chain tentacles with fluid drag.
-- **Seabed Seaweed:** Stalks swaying with phase-lagged sinusoidal oscillations.
-- **Atmospheric Caustics:** Procedural underwater light caustics computed via 3D continuous Simplex Noise.
-- **Interactive Cursor Scattering:** Moving the mouse scatters schools of fish with exponential repulsion force.
-
-### 2. 💧 Interactive Water & Ripples
-- **Wave Heightfield Solver:** Discretized 2D shallow water wave equation ($u^{t+1} = 2u^t - u^{t-1} + c^2 \nabla^2 u$) with damping $\gamma = 0.985$.
-- **Interactive Disturbances:** Cursor movements leave wake trails; clicks trigger Gaussian droplet shockwaves.
-- **Floating Sakura Petals:** Cherry blossom petals drift across the surface and get pushed by wave height gradients.
-
-### 3. 🐸 Frog & Lily Pond
-- **Biomechanical Frog State Machine:** Frogs exhibit realistic states (Breathing $\rightarrow$ Jump anticipation $\rightarrow$ Parabolic ballistic leap $\rightarrow$ Splashdown $\rightarrow$ Swimming $\rightarrow$ Return to lily pad).
-- **Physical Splash Coupling:** Frogs take off and land with localized water ripple energy injected into the wave equation solver.
-- **Buzzing Dragonflies:** Dynamic insects hovering and darting across the water surface.
-
-### 4. 🌌 Cosmic Aurora
-- **Multi-Octave Noise Curtains:** Simplex Noise ribbon curtains oscillating with continuous time-varying folds.
-- **Atmospheric Gradient:** Transitions from emerald green (`#10E6A0`) at the curtain base to glowing magenta/violet (`#C03CF0`) at the crown.
-- **Twinkling Starfield:** Background cosmos populated with starlight glyphs (`✦`, `✧`, `·`, `°`, `•`).
-
-### 5. 🌀 Abstract Flow Fields
-- **Continuous Curl Noise Swarms:** Mathematical generative particles steered by 3D procedural noise velocity grids.
-- **Dynamic Mouse Vortex Attractor:** Cursor creates an inward pull and tangential swirl force, pulling particles into a living vortex.
-- **Directional Vectors:** Velocity vectors map in real-time to directional Unicode glyphs (`→`, `↗`, `↑`, `↖`, `←`, `↙`, `↓`, `↘`).
-
----
-
-## 2. Image-to-ASCII Conversion Studio
-
-Transform your own pictures into retro character artwork:
-- **Client-Side Offscreen Processing:** Full aspect-ratio compensation (0.55 monospace scale) for 50 to 160 columns.
-- **Sobel 3×3 Edge Contour Filter:** Computes edge gradient magnitude and angle, mapping contours to structural stroke characters (`/`, `|`, `\`, `-`).
-- **Flexible Character Ramps:** Render in classic 10-level ASCII, dense 70-character ramps, Unicode blocks, or geometric symbols.
-- **One-Click Export:** Copy directly to clipboard or download as a standalone `.txt` document.
-
----
-
-## 3. Minimalist Productivity Suite
-
-- **Claude-Inspired Conversational Greeting:** Time-aware greetings (Morning, Afternoon, Evening, Night) with personalized username integration.
-- **Omni-Engine Search Bar:** Instant switching between **Google**, **DuckDuckGo**, **Bing**, **Brave Search**, **Ecosia**, or a **Custom Search URL**.
-- **Keyboard Accelerators:** Press `/` anywhere to focus search immediately; `Esc` to blur or close dialogs.
-- **Pinned Shortcuts:** Fast access to your favorite sites with automated high-resolution Google S2 favicon fetching.
-- **Ambient Typography Clock & Weather:** Live local time and free Open-Meteo weather with automatic geocoding and 30-minute caching.
-- **Personalization Drawer:** Customize font sizes, character density, animation speed, background dimming, and color themes.
-
----
-
-## 4. Visual Themes & Character Sets
-
-| Theme | Aesthetic & Color Spectrum |
-| :--- | :--- |
-| **True-Color** | Full RGB atmospheric gradient per environment |
-| **Phosphor Amber** | CRT Terminal Amber (`#F59E0B` & `#B45309`) |
-| **Matrix Emerald** | Classic digital hacker phosphor green (`#22C55E`) |
-| **Cyberpunk Neon** | Vibrant synthwave magenta & cyan (`#EC4899` & `#38BDF8`) |
-| **Ice Blue** | Arctic deep sea and glacial azure (`#0E7490` & `#38BDF8`) |
-| **Claude Warm** | Warm terracotta (`#D97757`) & oatmeal cream |
-| **Monochrome White** | Clean slate typography (`#F1F5F9`) |
-
----
+All fonts are bundled locally. The only network calls are weather and shortcut favicons.
 
 ## Installation & Setup
 
@@ -141,7 +76,7 @@ Pixora includes an automated packaging script:
 pnpm package:release
 # or: npm run package:release
 ```
-This builds the extension and generates `release/pixora-v1.0.0-chrome-extension.zip`, ready for distribution or GitHub Releases.
+This builds the extension and generates `release/pixora-v<version>-chrome-extension.zip` (it always rebuilds first), ready for distribution or GitHub Releases.
 
 ---
 
@@ -156,29 +91,23 @@ Preview at `http://localhost:5173`.
 
 ---
 
-## Keyboard Shortcuts
+## Keyboard
 
-| Shortcut | Action |
+| Key | Action |
 | :--- | :--- |
-| `/` | Focus Central Search Bar |
-| `Esc` | Blur Search Bar / Close active drawer or modal |
-| `Enter` | Submit query to selected search engine |
-| `Click Canvas` | Inject shockwave water ripple / splash |
-| `Hover Canvas` | Displace fish schools / create water wakes / attract particles |
+| `/` | Focus search |
+| `Esc` | Clear search, or close the open panel |
+| `Enter` | Search, or open the typed address |
 
----
+## How it works (short version)
 
-## Architecture & Performance Safeguards
+- A plain TypeScript engine (`src/engine`) runs outside React: fixed 60 Hz simulation steps (so speed is the same on 60/120/144 Hz screens), one render per frame, paused when the tab is hidden.
+- Worlds write into a typed-array character grid with depth layers, so near creatures always cover far ones.
+- The rasterizer groups cells by colour and opacity (a handful of state changes per frame instead of thousands); Braille is drawn as dot rectangles; the backdrop gradient is CSS behind a transparent canvas.
+- Performance tier *Auto* drops to 30 fps, then to a coarser grid, if a machine struggles.
 
-- **60 FPS Decoupled Canvas Loop:** The simulation runs in pure TypeScript without triggering React re-renders or DOM reflows.
-- **Zero Inactive Tab CPU ($0.0\%$):** Automatically binds `visibilitychange` to suspend the RequestAnimationFrame loop when the tab is inactive, preventing battery drain.
-- **Euclidean Geometry Compensation:** Aspect ratio normalizer accounts for rectangular monospace font proportions ($0.6\times$), guaranteeing ripples and circular bodies remain true circles.
-- **Hybrid Storage Layer:** Transparently uses `chrome.storage.local` inside the extension, with automatic fallback to `localStorage` during standard web development.
-
-For the full mathematical formulations, component diagrams, and memory budgets, see [ARCHITECTURE.md](./ARCHITECTURE.md).
-
----
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the details.
 
 ## License
 
-MIT © [ColossalMonk](https://github.com/ColossalMonk)
+MIT © [ColossalMonk](https://github.com/ColossalMonk). Rendering ideas inspired by [ascii-animals](https://github.com/DesignerStephen1/ascii-animals) and [asciify-engine](https://github.com/ayangabryl/asciify-engine) (both MIT); no code copied.

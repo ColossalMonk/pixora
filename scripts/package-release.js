@@ -11,10 +11,9 @@ const version = pkg.version || '1.1.0';
 const ZIP_FILE = path.join(RELEASE_DIR, `pixora-v${version}-chrome-extension.zip`);
 const LATEST_ZIP = path.join(RELEASE_DIR, 'pixora-chrome-extension.zip');
 
-if (!fs.existsSync(DIST_DIR)) {
-  console.log('Building project before packaging...');
-  execSync('npm run build', { stdio: 'inherit' });
-}
+// Always rebuild so the zip can never contain a stale dist/.
+console.log('Building project before packaging...');
+execSync('npm run build', { stdio: 'inherit' });
 
 if (!fs.existsSync(RELEASE_DIR)) {
   fs.mkdirSync(RELEASE_DIR, { recursive: true });

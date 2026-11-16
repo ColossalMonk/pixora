@@ -1,7 +1,7 @@
 {
   "name": "pixora",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "Pixora — An Immersive, Generative-Art Browser New Tab Experience",
   "scripts": {
@@ -11,6 +11,8 @@
     "package:release": "node scripts/package-release.js"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",
     "react": "^19.0.0",

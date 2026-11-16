@@ -1,4 +1,4 @@
-import { CharacterStyle, ColorTheme } from './engine';
+import { CharacterStyle, ColorTheme, PerformanceTier } from './engine';
 import { EnvironmentId } from './environment';
 
 export interface ShortcutItem {
@@ -27,8 +27,9 @@ export interface UserSettings {
   charDensity: number;
   animationSpeed: number;
   interactionIntensity: number;
-  autoRotateEnvironments: boolean;
-  performanceTier: 'low' | 'balanced' | 'high';
+  performanceTier: PerformanceTier;
+  /** 0..1 — fade the art softly behind the clock and search. */
+  calmCenter: number;
   reducedMotion: boolean;
 
   // Productivity
@@ -36,7 +37,6 @@ export interface UserSettings {
   searchEngine: SearchEngineId;
   customSearchUrl: string;
   shortcuts: ShortcutItem[];
-  enableRecentHistory: boolean;
   
   // Weather
   weatherCity: string;
@@ -50,6 +50,8 @@ export interface UserSettings {
   showGreeting: boolean;
   showShortcuts: boolean;
   showTopWorldCapsule: boolean; // Hidden inside settings, off by default
-  dailyEnvironmentRotation: boolean; // Rotates to a new living world every 24 hours
-  lastRotationDate: string; // ISO date string (YYYY-MM-DD)
+  dailyEnvironmentRotation: boolean; // Rotates to a new living world every day
+  /** "Keep this forever": pin the current world and stop daily rotation. */
+  keepWorld: boolean;
+  lastRotationDate: string; // local date YYYY-MM-DD
 }

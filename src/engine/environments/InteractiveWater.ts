@@ -19,7 +19,7 @@ interface Firefly { x: number; y: number; phase: number; vx: number; vy: number;
  */
 export class InteractiveWater extends BaseEnvironment {
   public readonly id = 'ripples';
-  public readonly preferredStyle = 'ascii-standard' as const;
+  public readonly preferredStyle = 'tiles' as const;
   public readonly backdrop = [hex('#0b1533'), hex('#101d40'), hex('#0a1630'), hex('#050b1a')];
 
   private wave = new WaveEquation2D();
@@ -263,7 +263,7 @@ export class InteractiveWater extends BaseEnvironment {
         field[i] = v;
       }
     }
-    renderField(grid, field, { style, lut: this.waterLut, tint, layer: Layer.SKY, threshold: 0.075, minAlpha: 0.12, alphaGain: 0.8 });
+    renderField(grid, field, { style, lut: this.waterLut, tint, layer: Layer.SKY, threshold: 0.1, minAlpha: style === 'tiles' ? 0.08 : 0.12, alphaGain: style === 'tiles' ? 0.6 : 0.8 });
     // Shoreline reflection of the treeline.
     for (let c = 0; c < cols; c++) {
       const h = this.treeline[c];

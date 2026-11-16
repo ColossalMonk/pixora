@@ -13,6 +13,8 @@ import { ResolvedStyle } from '../../types/engine';
 
 // Ordered thresholds for the 8 Braille dots (2 wide × 4 tall), spread like a Bayer matrix.
 const DOT_THRESH = [0.0625, 0.5625, 0.8125, 0.3125, 0.6875, 0.1875, 0.4375, 0.9375];
+const TILE_GLYPH = 0x00b7; // ·
+
 // Braille bit for dot (dx, dy).
 const DOT_BIT = [
   [0x01, 0x02, 0x04, 0x40],
@@ -44,6 +46,22 @@ export function renderField(grid: RenderGrid, values: Float32Array, opts: FieldO
   const tint = opts.tint ?? null;
   const cols = grid.cols;
   const rows = grid.rows;
+
+  if (style === 'tiles') {
+    // Quantised translucent tiles; the brightest level also carries a dark glyph.
+    const levels = 4;
+    for (let i = 0, n = cols * rows; i < n; i++) {
+      const v = values[i];
+      if (v < threshold) continue;
+      const vv = v > 1 ? 1 : v;
+      const q = Math.ceil(((vv - threshold) / (1 - threshold)) * levels) / levels;
+      const color = tint && tint[i] ? tint[i] : lut[(vv * 255) | 0];
+      const r = (i / cols) | 0;
+      const glyph = q >= 1 ? TILE_GLYPH : 0;
+      grid.putSolid(i - r * cols, r, glyph, 0x000000, 0.35, color, minAlpha + q * q * alphaGain, layer);
+    }
+    return;
+  }
 
   if (style === 'braille') {
     for (let r = 0; r < rows; r++) {

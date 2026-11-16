@@ -85,7 +85,6 @@ export class RenderGrid {
     this.glyph[i] = cp;
     this.fg[i] = color;
     this.alpha[i] = a > 1 ? 1 : a;
-    if (layer > Layer.SKY) this.bgAlpha[i] = 0;
   }
 
   public putChar(col: number, row: number, ch: string, color: number, a: number, layer: number = Layer.MID): void {

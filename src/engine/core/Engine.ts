@@ -191,7 +191,14 @@ export class Engine {
     if (!this.active || this.width === 0) return;
     const stops = this.active.backdrop.map((c) => themeBackdrop(c, this.config.colorTheme));
     this.rasterizer.prepareBackdrop(this.width, this.height, this.dpr, stops);
-    if (this.canvas) this.canvas.style.background = this.rasterizer.backdropCss;
+    if (this.canvas) {
+      // Faint cell grid (aligned to the character cells) over the world's gradient.
+      const cw = this.grid.cellWidth;
+      const ch = this.grid.cellHeight;
+      const line = 'rgba(255,255,255,0.035)';
+      const grid = `linear-gradient(${line} 1px, transparent 1px) 0 0 / ${cw}px ${ch}px, linear-gradient(90deg, ${line} 1px, transparent 1px) 0 0 / ${cw}px ${ch}px`;
+      this.canvas.style.background = `${grid}, ${this.rasterizer.backdropCss}`;
+    }
   }
 
   private context(): WorldContext {

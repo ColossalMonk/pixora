@@ -1,8 +1,8 @@
 # Pixora — Architecture
 
-> Version 1.2.0 · Chrome / Edge / Brave, Manifest V3 new-tab override
+> Version 1.3.0 · Chrome / Edge / Brave, Manifest V3 new-tab override
 
-Pixora is a React overlay (clock, greeting, search, shortcuts, weather, settings) on top of a full-screen canvas driven by a small, dependency-free TypeScript engine. React only pushes settings into the engine; the engine never causes a React render.
+Pixora (11 worlds) is a React overlay (clock, greeting, search, shortcuts, weather, settings) on top of a full-screen canvas driven by a small, dependency-free TypeScript engine. React only pushes settings into the engine; the engine never causes a React render.
 
 ```mermaid
 graph TD
@@ -45,7 +45,7 @@ src/
     │   ├── Field.ts                scalar field → glyph ramp or Braille (bilinear + dither)
     │   └── Shapes.ts               anti-aliased creature bodies, stroke lines, spots
     ├── physics/                    Boids (spatial hash), wave equation, energy field, simplex noise
-    └── environments/               the five worlds + registry
+    └── environments/               the eleven worlds + registry
 ```
 
 ## Engine loop
@@ -93,8 +93,16 @@ A glyph-atlas (`drawImage`) path was prototyped and measured slower than `fillTe
 | Frog Pond | murky water + ripples · koi (fogged) · food · lily pads + flowers · frogs (idle / anticipate / jump / swim / tongue) · dragonflies · reeds |
 | Northern Lights | stars + reflections · two aurora curtains · lake mirror · meteors · ridged far + near mountains |
 | Flow Fields | dot-resolution trails · direction arrows · click shockwave rings |
+| Campfire | stars · firelight glow · tree silhouettes (rim-lit) · ground · heat-propagation flames · logs, stones · sparks |
+| Zen Garden | groove rows / rings around stones · raked strokes (fade over 90 s) · stones + moss · petals |
+| Butterfly Meadow | sun · far + near hills · flowers on stems · grass blades (part around pointer) · butterflies (wing tiles open/close) · fluff |
+| Winter Pines | moon · far snowy ridge · near ridge · pines with snow tiers · ground snow (accumulates per column) · flakes by depth |
+| Firefly Forest | trunks by depth · glow field · fireflies (Kuramoto phase sync) · ferns |
+| Rainy City | lightning flash + bolt · buildings with lit windows (some flicker) · rain streaks · glass trails · drops (grow, slide) |
 
-Each world declares a `preferredStyle` (used when Character Style is *Auto*) and a backdrop gradient, and re-seeds itself on resize.
+Each world declares a `preferredStyle` (used when Character Style is *Auto*: `tiles` for all but Flow) and a backdrop gradient, and re-seeds itself on resize.
+
+**Tiles.** In the tile style a field cell becomes a translucent tile whose opacity rises with the square of its value (so faint areas vanish and only strong features show); bodies drawn with `solid: true` become opaque tiles in their own colour with a darker glyph. The rasterizer insets every tile by a hairline and the canvas sits on a faint CSS grid aligned to the cells. Glyph writes never erase a tile beneath them.
 
 ## Settings and persistence
 

@@ -6,7 +6,13 @@ export type EnvironmentId =
   | 'ripples'
   | 'frog-pond'
   | 'cosmic-aurora'
-  | 'abstract-flow';
+  | 'abstract-flow'
+  | 'campfire'
+  | 'zen-garden'
+  | 'meadow'
+  | 'winter-pines'
+  | 'firefly-forest'
+  | 'rainy-city';
 
 export interface EnvironmentMeta {
   id: EnvironmentId;

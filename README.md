@@ -10,7 +10,7 @@
 ```
 
 > **Pixora** transforms the standard browser New Tab into an ambient, living digital sanctuary.  
-> Five living ASCII worlds drawn on a canvas, with a calm clock, search and shortcuts on top. A new world every day, or keep the one you love forever.
+> Eleven living ASCII worlds drawn on a canvas, with a calm clock, search and shortcuts on top. A new world every day, or keep the one you love forever.
 
 ---
 
@@ -23,12 +23,19 @@
 | **Frog Pond** | Frogs that breathe, blink, leap between free lily pads, swim back and catch dragonflies; koi below the surface; reeds | Click the water to drop food for the koi · get close and frogs leap away |
 | **Northern Lights** | Two aurora curtains of vertical rays over sharp ridges, mirrored in a lake; stars and meteors | Move to push the curtains · click for a flare and a shooting star |
 | **Flow Fields** | Particles riding curl noise, leaving fine Braille-dot trails; the palette drifts between moods | Hover to stir a vortex · click for a shockwave |
+| **Campfire** | A heat-simulation fire with sparks, firelit trees and stars | Move to either side to lean the flames · click to send up sparks |
+| **Zen Garden** | Raked sand that rings each mossy stone, drifting petals | Hold and drag to rake · click to press rings · raking settles back over ~90 s |
+| **Butterfly Meadow** | Dusk hills, a low sun, flowers and butterflies that rest and wander | Hold still and they come close · move fast and they scatter · click for more |
+| **Winter Pines** | Snow in three depths over snowy pines; it gathers on the ground | Sweep for gusts · click for a strong gust |
+| **Firefly Forest** | Fireflies that gradually synchronise their flashing (Kuramoto model) | Hold still and they gather · click to flash them all |
+| **Rainy City** | City lights through a rainy window; drops bead, grow and slide | Drag to wipe the glass · click for lightning |
 
-**Daily rotation:** a new world each day at your local midnight. Flip **Keep this forever** (bottom right) to pin the one you're on. The arrows next to it switch worlds by hand, and **Worlds** (top right) shows live previews of all five.
+**Daily rotation:** a new world each day at your local midnight. Flip **Keep this forever** (bottom right) to pin the one you're on. The arrows next to it switch worlds by hand, and **Worlds** (top right) shows live previews of all of them.
 
 ## Look & feel
 
-- **Character style:** *Auto* (each world's own glyphs: vertical rays for the aurora, Braille for flow), or force Classic ASCII, Dense ASCII, Braille, Blocks, Geometric or Dots for water, light and trails. Creatures keep their own shapes.
+- **Tile look:** creatures and scenery are drawn as solid coloured tiles with a small darker glyph on each, over a faint cell grid (after ascii-animals). Calm areas stay empty.
+- **Character style:** *Auto* (tiles, plus Braille for Flow), or force Tiles, Classic ASCII, Dense ASCII, Braille, Blocks, Geometric or Dots for water, light, fire and trails.
 - **Colour themes:** True Color, Phosphor Amber, Matrix Emerald, Cyberpunk Neon, Ice Blue, Claude Warm, Monochrome.
 - **Calm zone:** the art fades softly behind the clock and search so text stays readable (adjustable).
 - **Interaction strength**, animation speed, font size and density are adjustable. **Reduced motion** (or the OS setting) shows a settled still frame.
@@ -38,8 +45,8 @@
 - Time-aware greeting (optionally with your name), clock and date.
 - Search with Google, DuckDuckGo, Bing, Brave, Ecosia or a custom URL. Typing an address (`github.com`, `localhost:5173`) opens it directly; bangs `!g !d !b !br !e` pick an engine for one search. `/` focuses search, `Esc` clears it.
 - Shortcuts with favicons.
-- Weather from Open-Meteo. With no city set, Pixora uses your time zone's city (no location prompt).
-- ASCII Studio: drop or pick an image and convert it to text with luminance ramps and Sobel edge strokes; copy or download as `.txt`.
+- Weather from Open-Meteo. With no city set, Pixora uses your time zone's city (no location prompt). With *Use my location* on, the place name comes from BigDataCloud's free reverse geocoder.
+- ASCII Studio: drop, paste or pick an image. Render as Characters, Braille (Atkinson-dithered) or Blocks (half-block pixels), in full colour, mono, matrix or amber, with auto-levels plus brightness/contrast/gamma. Compare with the original, copy text, or export `.txt` / `.png`.
 
 All fonts are bundled locally. The only network calls are weather and shortcut favicons.
 

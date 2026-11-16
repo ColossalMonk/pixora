@@ -22,7 +22,7 @@ interface Meteor { x: number; y: number; vx: number; vy: number; life: number; }
  */
 export class CosmicAurora extends BaseEnvironment {
   public readonly id = 'cosmic-aurora';
-  public readonly preferredStyle = 'ascii-dense' as const;
+  public readonly preferredStyle = 'tiles' as const;
   public readonly backdrop = [hex('#020617'), hex('#06102b'), hex('#0c1a3d'), hex('#040a1c')];
 
   private noise = new SimplexNoise(777);
@@ -167,7 +167,7 @@ export class CosmicAurora extends BaseEnvironment {
         tint[i] = tint[si] ? scale(tint[si], 0.75) : 0;
       }
     }
-    renderField(grid, field, { style, lut: this.lut, tint, layer: Layer.SKY, threshold: 0.1, minAlpha: 0.22, alphaGain: 0.78, ramp: ctx.auto ? RAY_RAMP : undefined });
+    renderField(grid, field, { style, lut: this.lut, tint, layer: Layer.SKY, threshold: style === 'tiles' ? 0.2 : 0.12, minAlpha: style === 'tiles' ? 0.03 : 0.22, alphaGain: style === 'tiles' ? 0.8 : 0.78, ramp: ctx.auto ? RAY_RAMP : undefined });
 
     // Meteors.
     for (const m of this.meteors) {

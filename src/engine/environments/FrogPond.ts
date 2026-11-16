@@ -22,7 +22,7 @@ interface Reed { x: number; h: number; phase: number; head: boolean; }
 
 export class FrogPond extends BaseEnvironment {
   public readonly id = 'frog-pond';
-  public readonly preferredStyle = 'ascii-standard' as const;
+  public readonly preferredStyle = 'tiles' as const;
   public readonly backdrop = [hex('#0f2e28'), hex('#0b2622'), hex('#081c1a'), hex('#05120f')];
 
   private wave = new WaveEquation2D();
@@ -355,10 +355,10 @@ export class FrogPond extends BaseEnvironment {
         const gy = this.wave.gradY(c, r);
         const spec = Math.max(0, gx * 0.6 - gy * 0.8) * 1.8;
         const murk = this.noise.noise3D(c * 0.06, r * 0.12, t * 0.12) * 0.5 + 0.5;
-        field[i] = Math.max(0, murk - 0.52) * 0.45 + Math.abs(h) * 0.4 + spec;
+        field[i] = Math.max(0, murk - 0.72) * 0.5 + Math.abs(h) * 0.45 + spec;
       }
     }
-    renderField(grid, field, { style, lut: this.waterLut, layer: Layer.SKY, threshold: 0.07, minAlpha: 0.12, alphaGain: 0.75 });
+    renderField(grid, field, { style, lut: this.waterLut, layer: Layer.SKY, threshold: 0.09, minAlpha: style === 'tiles' ? 0.06 : 0.12, alphaGain: style === 'tiles' ? 0.5 : 0.75 });
 
     // Koi under the surface (fogged toward the water).
     const waterTone = hex('#0f3b36');
@@ -387,7 +387,7 @@ export class FrogPond extends BaseEnvironment {
           if (patch > 1.4) return 0.08;
           return patch > 0 ? 0.5 : 0.9;
         },
-        lut: this.koiLut, texture: this.koiTex, layer: Layer.FAR, solid: false, opacity: 0.95, fog: 0.18, fogColor: waterTone,
+        lut: this.koiLut, texture: this.koiTex, layer: Layer.FAR, solid: true, fillAlpha: 0.85, opacity: 0.95, fog: 0.15, fogColor: waterTone,
       });
     }
     for (const p of this.pellets) spot(grid, p.x, p.y, code('•'), hex('#d6b46a'), Math.min(1, p.life / 2), Layer.MID);

@@ -88,6 +88,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose 
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-slate-200 outline-none"
                 >
                   <option value="auto">Auto (each world's own style)</option>
+                  <option value="tiles">Tiles (clean pixel blocks)</option>
                   <option value="ascii-standard">Classic ASCII ( .:-=+*#%@)</option>
                   <option value="ascii-dense">Dense ASCII (70 glyphs)</option>
                   <option value="braille">Braille dots (fine detail ⣿)</option>

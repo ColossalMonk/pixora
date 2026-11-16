@@ -6,7 +6,7 @@ import { code } from './RenderGrid';
  * measured ink of the real font (see `calibrateRamps`), so density steps are
  * even no matter which monospace face actually loaded.
  */
-const RAW_RAMPS: Record<Exclude<ResolvedStyle, 'braille'>, string> = {
+const RAW_RAMPS: Record<Exclude<ResolvedStyle, 'braille' | 'tiles'>, string> = {
   'ascii-standard': ' .:-=+*#%@',
   'ascii-dense': " .'`^\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
   blocks: ' ░▒▓█',
@@ -59,7 +59,7 @@ export function calibrateRamps(fontFamily: string): void {
   ramps = buildRamps(ink);
 }
 
-export function getRamp(style: Exclude<ResolvedStyle, 'braille'>): Uint32Array {
+export function getRamp(style: ResolvedStyle): Uint32Array {
   return ramps[style] ?? ramps['ascii-standard'];
 }
 
@@ -70,12 +70,12 @@ export function resolveStyle(user: CharacterStyle, worldDefault: ResolvedStyle):
 
 /** Older saved settings used styles that no longer exist. */
 export function migrateStyle(style: string | undefined): CharacterStyle {
-  const valid: CharacterStyle[] = ['auto', 'ascii-standard', 'ascii-dense', 'blocks', 'geometric', 'braille', 'dots'];
+  const valid: CharacterStyle[] = ['auto', 'tiles', 'ascii-standard', 'ascii-dense', 'blocks', 'geometric', 'braille', 'dots'];
   return valid.includes(style as CharacterStyle) ? (style as CharacterStyle) : 'auto';
 }
 
 export function getCharForLuminance(luminance: number, style: ResolvedStyle, invert = false): string {
-  const ramp = style === 'braille' ? ramps['ascii-standard'] : getRamp(style);
+  const ramp = getRamp(style);
   let v = Math.max(0, Math.min(1, luminance));
   if (invert) v = 1 - v;
   return String.fromCodePoint(ramp[Math.round(v * (ramp.length - 1))]);

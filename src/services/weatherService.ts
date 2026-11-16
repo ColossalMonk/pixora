@@ -22,7 +22,7 @@ export interface WeatherData {
   key?: string;
 }
 
-const CACHE_KEY = 'pixora_weather_cache';
+const CACHE_KEY = 'pixora_weather_cache_v2';
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 export class WeatherService {
@@ -48,7 +48,7 @@ export class WeatherService {
           const pos = await this.getCurrentPosition();
           lat = pos.coords.latitude;
           lon = pos.coords.longitude;
-          displayCity = 'Current Location';
+          displayCity = (await this.placeName(lat, lon)) || guessCity() || 'Your location';
         } catch {
           // Fall back to city geocoding
         }
@@ -96,6 +96,23 @@ export class WeatherService {
     } catch (e) {
       console.warn('WeatherService error:', e);
       return null;
+    }
+  }
+
+  /**
+   * Coordinates → place name. Uses BigDataCloud's free client-side reverse
+   * geocoder (no key); only called when the user turned on "Use my location".
+   */
+  private static async placeName(lat: number, lon: number): Promise<string> {
+    try {
+      const res = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&localityLanguage=en`
+      );
+      if (!res.ok) return '';
+      const d = await res.json();
+      return d.city || d.locality || d.principalSubdivision || d.countryName || '';
+    } catch {
+      return '';
     }
   }
 

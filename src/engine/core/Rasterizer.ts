@@ -82,12 +82,13 @@ export class Rasterizer {
     const ch = grid.cellHeight;
     const cols = grid.cols;
 
-    // Pass 1 — solid cell fills.
+    // Pass 1 — solid tiles, inset by a hairline so the cell grid reads (ascii-animals look).
+    const gap = Math.min(1, cw * 0.06);
     this.sortCells(grid.bg, grid.bgAlpha, grid.focus, null, themeLut, n);
     this.flush(ctx, (i) => {
       const c = i % cols;
       const r = (i / cols) | 0;
-      ctx.fillRect(c * cw, r * ch, cw + 0.5, ch + 0.5);
+      ctx.fillRect(c * cw + gap, r * ch + gap, cw - gap * 2, ch - gap * 2);
     });
 
     // Pass 2 — glyphs. Braille is drawn as dot rectangles; everything else with fillText.

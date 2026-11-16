@@ -3,7 +3,7 @@ import { WorldContext } from '../../types/environment';
 import { BoidsSystem } from '../physics/BoidsSystem';
 import { SimplexNoise } from '../physics/SimplexNoise';
 import { EnergyField } from '../physics/EnergyField';
-import { Layer, RenderGrid, code } from '../core/RenderGrid';
+import { Layer, code } from '../core/RenderGrid';
 import { gradientLUT, hex, mix, hash2, scale } from '../core/Color';
 import { renderField } from '../draw/Field';
 import { drawBody, drawLine, spot } from '../draw/Shapes';
@@ -27,7 +27,7 @@ const SPECIES = [
 
 export class UnderwaterWorld extends BaseEnvironment {
   public readonly id = 'underwater';
-  public readonly preferredStyle = 'ascii-standard' as const;
+  public readonly preferredStyle = 'tiles' as const;
   public readonly backdrop = [hex('#0c3b5e'), hex('#082a47'), hex('#05182c'), hex('#030b17')];
 
   private noise = new SimplexNoise(42);
@@ -53,6 +53,9 @@ export class UnderwaterWorld extends BaseEnvironment {
     gradientLUT([[0, hex('#4c1d95')], [0.5, hex('#a78bfa')], [1, hex('#f5f3ff')]]),
   ];
   private scaleTex = Uint32Array.from(Array.from('%≡=;:·').reverse().map(code));
+  private jellyLutA = gradientLUT([[0, hex('#9d174d')], [0.5, hex('#f472b6')], [1, hex('#fde7f3')]]);
+  private jellyLutB = gradientLUT([[0, hex('#5b21b6')], [0.5, hex('#a78bfa')], [1, hex('#ede9fe')]]);
+  private bellTex = Uint32Array.from(Array.from(".:'·°").map(code));
   private rockLut = gradientLUT([[0, hex('#1f2937')], [1, hex('#64748b')]]);
   private rockTex = Uint32Array.from(Array.from('.:%#@').map(code));
 
@@ -70,7 +73,7 @@ export class UnderwaterWorld extends BaseEnvironment {
     }
 
     // Fish schools: depth layers by index.
-    const count = Math.round(Math.min(140, 64 * area * quality + 12));
+    const count = Math.round(Math.min(90, 38 * area * quality + 10));
     this.boids.reset(count, width, height, (i) => (i % 5 === 0 ? 0.85 + Math.random() * 0.15 : i % 2 ? 0.15 + Math.random() * 0.3 : 0.5 + Math.random() * 0.25));
     this.species = new Uint8Array(count);
     for (let i = 0; i < count; i++) this.species[i] = Math.floor(i / 9) % SPECIES.length;
@@ -323,7 +326,7 @@ export class UnderwaterWorld extends BaseEnvironment {
     const ch = grid.cellHeight;
     const t = this.time;
 
-    // 1. God rays + caustics (sky layer field).
+    // 1. Soft god rays (sky layer field).
     const light = this.light;
     for (let r = 0; r < rows; r++) {
       const yn = r / rows;
@@ -331,22 +334,16 @@ export class UnderwaterWorld extends BaseEnvironment {
       for (let c = 0; c < cols; c++) {
         const slant = c * 0.022 + r * 0.012;
         const ray = Math.max(0, this.noise.noise2D(slant, t * 0.05)) ** 2 * 0.55;
-        let v = ray * depthFade;
-        if (yn < 0.35) {
-          const ca = this.noise.noise3D(c * 0.09, r * 0.18, t * 0.35);
-          const caustic = Math.max(0, ca - 0.35) * 1.6 * (1 - yn / 0.35);
-          v += caustic;
-        }
-        light[r * cols + c] = v;
+        light[r * cols + c] = ray * depthFade;
       }
     }
-    renderField(grid, light, { style, lut: this.lightLut, layer: Layer.SKY, threshold: 0.09, minAlpha: 0.1, alphaGain: 0.45 });
+    renderField(grid, light, { style, lut: this.lightLut, layer: Layer.SKY, threshold: 0.14, minAlpha: 0.04, alphaGain: 0.14 });
 
     // 2. Marine snow.
-    for (const s of this.snow) spot(grid, s.x, s.y, code(s.s > 0.75 ? '·' : '.'), hex('#9cc9de'), 0.18 + s.s * 0.2, Layer.FAR);
+    for (let i = 0; i < this.snow.length; i += 3) { const s = this.snow[i]; spot(grid, s.x, s.y, code('·'), hex('#9cc9de'), 0.15 + s.s * 0.15, Layer.FAR); }
 
     // 3. Wake / disturbance field.
-    renderField(grid, this.wake.values, { style, lut: this.wakeLut, layer: Layer.FAR, threshold: 0.08, minAlpha: 0.15, alphaGain: 0.5 });
+    renderField(grid, this.wake.values, { style, lut: this.wakeLut, layer: Layer.FAR, threshold: 0.12, minAlpha: 0.08, alphaGain: 0.35 });
 
     // 4. Far kelp (behind fish).
     this.renderKelp(ctx, false);
@@ -392,7 +389,20 @@ export class UnderwaterWorld extends BaseEnvironment {
           drawLine(grid, p[o - 4], p[o - 3], p[o], p[o + 1], j.hue ? hex('#e9d5ff') : hex('#fbcfe8'), a, Layer.MID);
         }
       }
-      this.drawBell(grid, j.x, j.y, w, h, j.hue, pulse);
+      const bellLut = j.hue ? this.jellyLutB : this.jellyLutA;
+      drawBody(grid, {
+        x: j.x, y: j.y, heading: 0, length: w, width: h * 2,
+        sampler: (u, v) => {
+          if (v > 0.04) return 0;
+          // Dome with a scalloped hem.
+          const hem = 0.04 - Math.abs(Math.sin(u * 22)) * 0.05;
+          if (v > hem) return 0;
+          const e = (u * u) / 0.25 + (v * v) / 0.25;
+          if (e > 1) return 0;
+          return 0.3 + (1 - e) * 0.55 + (v < -0.38 ? 0.15 : 0);
+        },
+        lut: bellLut, texture: this.bellTex, layer: Layer.NEAR, solid: true, fillAlpha: 0.75, opacity: 0.95,
+      });
     }
 
     // 7. Big fish (silhouettes with travelling tail wave).
@@ -430,7 +440,7 @@ export class UnderwaterWorld extends BaseEnvironment {
           const gill = Math.abs(x - 0.78) < 0.025 ? -0.2 : 0;
           return Math.max(0.05, Math.min(1, 0.3 + b * 0.6 + bars + gill));
         },
-        lut: this.fishLuts[f.palette], texture: this.scaleTex, layer: Layer.FRONT, solid: true, fillAlpha: 0.45, fillDarken: 0.7, opacity: 0.95,
+        lut: this.fishLuts[f.palette], texture: this.scaleTex, layer: Layer.FRONT, solid: true, opacity: 0.95,
       });
       const ex = f.x + Math.cos(f.heading) * len * 0.32 - Math.sin(f.heading) * len * 0.05 * (facingLeft ? -1 : 1);
       const ey = f.y + Math.sin(f.heading) * len * 0.32 - len * 0.04;
@@ -448,11 +458,13 @@ export class UnderwaterWorld extends BaseEnvironment {
     for (let c = 0; c < cols; c++) {
       const top = this.bed[c];
       for (let r = Math.max(0, top); r < rows; r++) {
-        const depthIn = (r - top) / 4;
+        // Sand as tiles: lighter on top, darker deeper, with a sparse grain glyph.
+        const depthIn = Math.min(1, (r - top) / 3);
         const grain = hash2(c, r);
-        const v = Math.min(1, 0.35 + depthIn * 0.2 + grain * 0.35);
-        const g = r === top ? (grain > 0.5 ? '_' : '.') : grain > 0.7 ? ':' : grain > 0.35 ? '.' : ',';
-        grid.putChar(c, r, g, this.sandLut[(v * 255) | 0], 0.35 + v * 0.4, Layer.FRONT);
+        const v = 0.55 - depthIn * 0.3 + grain * 0.12;
+        const tile = this.sandLut[(v * 255) | 0];
+        const g = grain > 0.82 ? code('.') : grain < 0.08 ? code(',') : 0;
+        grid.putSolid(c, r, g, mix(tile, 0, 0.5), 0.8, tile, 0.55 - depthIn * 0.2, Layer.FRONT);
       }
     }
     for (const co of this.coral) {
@@ -467,66 +479,11 @@ export class UnderwaterWorld extends BaseEnvironment {
       drawBody(grid, {
         x: vx, y: bedY, heading: 0, length: cw * 9, width: ch * 2.4,
         sampler: (u, v) => (v > 0 ? 0 : (u * u) / 0.25 + (v * v) / 0.25 < 1 ? 0.3 + (-v) * 0.6 : 0),
-        lut: this.rockLut, texture: this.rockTex, layer: Layer.FRONT,
+        lut: this.rockLut, texture: this.rockTex, layer: Layer.FRONT, solid: true,
       });
     }
     this.renderKelp(ctx, true);
     void width;
-  }
-
-  /**
-   * Jellyfish bell as a dome: each row's half-width follows an ellipse, with
-   * edge glyphs chosen by slope ( . / ( at the sides, - ~ along the crown ),
-   * a translucent dotted interior and a scalloped skirt that breathes.
-   */
-  private drawBell(grid: RenderGrid, x: number, y: number, w: number, h: number, hue: number, pulse: number): void {
-    const cw = grid.cellWidth;
-    const ch = grid.cellHeight;
-    const rows = Math.max(2, Math.round(h / ch));
-    const rim = hue ? hex('#e9d5ff') : hex('#fbcfe8');
-    const body = hue ? hex('#c4b5fd') : hex('#f9a8d4');
-    const glow = hue ? hex('#a78bfa') : hex('#f472b6');
-    const cx = x / cw;
-    const baseRow = Math.floor(y / ch);
-    for (let k = 0; k < rows; k++) {
-      // k = 0 is the crown, rows-1 the widest row just above the skirt.
-      const yn = 1 - (k + 0.5) / rows;
-      const half = (w / 2 / cw) * Math.sqrt(Math.max(0, 1 - yn * yn));
-      const row = baseRow - (rows - 1 - k);
-      const left = Math.round(cx - half);
-      const right = Math.round(cx + half);
-      for (let c = left; c <= right; c++) {
-        let g: string;
-        let col = body;
-        let a = 0.55;
-        if (k === 0) {
-          g = c === left ? '.' : c === right ? '.' : (c + k) % 3 === 0 ? '~' : '-';
-          col = rim;
-          a = 0.95;
-        } else if (c === left) {
-          g = half - (cx - left) > 0.2 || k < rows - 1 ? '/' : '(';
-          if (k === rows - 1) g = '(';
-          col = rim;
-          a = 0.95;
-        } else if (c === right) {
-          g = k === rows - 1 ? ')' : '\\';
-          col = rim;
-          a = 0.95;
-        } else {
-          const inner = Math.abs(c - cx) / Math.max(1, half);
-          g = inner < 0.35 && k === rows - 2 ? 'o' : (c + k) % 2 ? '·' : ':';
-          col = mix(glow, body, inner);
-          a = 0.35 + (1 - inner) * 0.3;
-        }
-        grid.put(c, row, code(g), col, a, Layer.NEAR);
-      }
-    }
-    // Skirt
-    const half = w / 2 / cw;
-    const skirtRow = baseRow + 1;
-    for (let c = Math.round(cx - half); c <= Math.round(cx + half); c++) {
-      grid.putChar(c, skirtRow, (c + Math.round(pulse * 2)) % 2 ? '‿' : '◡', rim, 0.75, Layer.NEAR);
-    }
   }
 
   private renderKelp(ctx: WorldContext, front: boolean): void {

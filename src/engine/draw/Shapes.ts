@@ -25,11 +25,11 @@ export interface BodyOptions {
   texture: Uint32Array;
   layer?: number;
   opacity?: number;
-  /** Fill solid cells with a darker block behind the glyph. */
+  /** Draw well-covered cells as coloured tiles with a darker glyph on top. */
   solid?: boolean;
-  /** Opacity of that fill (default 0.85). Lower for translucent creatures. */
+  /** Tile opacity multiplier (default 1). Lower for translucent creatures. */
   fillAlpha?: number;
-  /** How much darker the fill is than the glyph (0..1, default 0.62). */
+  /** How much darker the glyph is than its tile (0..1, default 0.55). */
   fillDarken?: number;
   /** 0..1 — blend toward `fogColor` (distance haze). */
   fog?: number;
@@ -111,7 +111,7 @@ export function drawBody(grid: RenderGrid, o: BodyOptions): void {
         const jitter = hash2(bu * 7 + 3, bv * 13 + 5) - 0.5;
         const ti = Math.max(0, Math.min(tex.length - 1, Math.round(shade * (tex.length - 1) + jitter)));
         if (o.solid) {
-          grid.putSolid(c, r, tex[ti], color, opacity, mix(color, 0, o.fillDarken ?? 0.62), opacity * (o.fillAlpha ?? 0.85), layer);
+          grid.putSolid(c, r, tex[ti], mix(color, 0, o.fillDarken ?? 0.55), opacity, color, opacity * (o.fillAlpha ?? 1), layer);
         } else {
           grid.put(c, r, tex[ti], color, opacity, layer);
         }

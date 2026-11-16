@@ -1,6 +1,7 @@
 /** What the user can pick. 'auto' lets each world use the style it was designed for. */
 export type CharacterStyle =
   | 'auto'
+  | 'tiles'
   | 'ascii-standard'
   | 'ascii-dense'
   | 'blocks'

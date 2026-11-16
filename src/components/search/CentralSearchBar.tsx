@@ -62,7 +62,7 @@ export const CentralSearchBar: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full max-w-xl mx-auto px-4">
+    <div className="relative z-30 w-full max-w-xl mx-auto px-4">
       <form
         onSubmit={handleSearch}
         className="relative flex items-center glass-panel rounded-2xl px-3 py-2.5 transition-all duration-300 focus-within:ring-2 focus-within:ring-teal-400/40 focus-within:border-teal-400/50 shadow-2xl"

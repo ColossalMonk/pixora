@@ -12,8 +12,8 @@
  *     image, not like a monochrome texture.
  */
 
-export type RenderMode = 'characters' | 'braille' | 'blocks';
-export type ColorMode = 'full' | 'mono' | 'matrix' | 'amber';
+export type RenderMode = 'characters' | 'braille' | 'blocks' | 'tiles';
+export type ColorMode = 'full' | 'mono' | 'matrix' | 'amber' | 'cyberpunk';
 export type Charset = 'standard' | 'detailed' | 'dense' | 'shapes';
 
 export interface ConvertOptions {
@@ -144,6 +144,14 @@ export function cellColor(r: number, g: number, b: number, v: number, mode: Colo
       return pack(20 + v * 100, 90 + v * 165, 40 + v * 90);
     case 'amber':
       return pack(120 + v * 135, 60 + v * 130, 10 + v * 40);
+    case 'cyberpunk': {
+      // Magenta/Cyan blend according to red vs blue bias and luminance
+      const isRed = (r - b) > 20;
+      if (isRed) {
+        return pack(200 + v * 55, 40 + v * 80, 160 + v * 95);
+      }
+      return pack(20 + v * 60, 160 + v * 95, 210 + v * 45);
+    }
     default: {
       // Glyphs cover only part of a cell, so lift colour toward its own brightness.
       const max = Math.max(r, g, b, 1);

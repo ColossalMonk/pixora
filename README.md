@@ -6,75 +6,55 @@
  | |_) | \ \/ / _ \| '__/ _` |     
  |  __/| |>  < (_) | | | (_| |     
  |_|   |_/_/\_\___/|_|  \__,_|     
-  Generative ASCII-Art Browser New Tab • Manifest V3
+  Generative ASCII-Art Browser New Tab • Manifest V3 • v2.1.0
 ```
 
-> **Pixora** transforms the standard browser New Tab into an ambient, living digital sanctuary.  
-> Living ASCII scenes (10 worlds, 10 animals, 6 flows, and your own picture) drawn on a canvas, with a calm clock, search and shortcuts on top. Something new every day, or keep your favourite forever.
+> **Pixora** transforms your browser New Tab into an ambient, living digital sanctuary.  
+> Procedural animated wildlife flocking across the screen, Asciify real-time image & video shaders with billowing fluid gas wake, ambient weather, conversational greetings, and productivity search.
 
 ---
 
-## Worlds, Animals and Flows
+## What's in Pixora v2.1.0
 
-Pixora shows one of three kinds of scene. Switch with the three icons in the bottom bar or the tabs in **Worlds** (top right).
+Pixora features **10 Total Scenes**: 7 authentic wildlife species from [DesignerStephen1/ascii-animals](https://github.com/DesignerStephen1/ascii-animals) and 3 custom ASCII image/video slots powered by [asciify-engine](https://github.com/ayangabryl/asciify-engine).
 
-**Worlds** (scenery): Deep Ocean · Moonlit Lake · Lily Pond · Northern Lights · Campfire · Zen Garden · Dusk Meadow · Winter Pines · Night Forest · Rainy City.
+### 1. Authentic Procedural Wildlife (7 Species)
+- **Butterflies:** Blue morpho flutter, wingbeats, air currents, and glides; scatter from fast cursor motion.
+- **Koi:** Five Nishikigoi varieties with flowing caudal fins, sinusoidal swimming, and schooling behavior.
+- **Jellyfish:** Bioluminescent bell contractions, tentacle drag lag, and upward pulsation.
+- **Dragonflies:** Rapid darting, hovering, and quick reactive fleeing.
+- **Frogs:** Patient perching, blinks, realistic parabolic leaps with splashes, and cursor gaze tracking.
+- **Cranes:** Elegant long-range V-formation flight with wing dynamics.
+- **Crabs:** Sideways scuttling, claw snaps, and tactical tucking.
 
-**Your Image:** drop any picture anywhere on the page (or use the image button in the bottom bar) and it becomes a living ASCII wallpaper: tiles, characters, Braille or half-blocks, in full colour, mono, matrix or amber, with brightness, contrast, gamma and dimming. Pointer effects: ripple (the picture refracts through water), repel (it bulges away from the pointer), reveal lens (true colours under the pointer), drift (gentle parallax) or still. The picture is kept in the browser's local storage (IndexedDB) and never leaves your computer. When nothing moves, the wallpaper stops redrawing to save battery.
+Every animal includes the full authentic tweak suite:
+- **Movement (Boids & Course):** Density, Corner-to-corner trajectory, Manual Direction (°), Speed, Sway, Spread, Size, Farthest Depth, Far Bias, Hold Course, and Separation.
+- **Species-Specific Knobs:** Wingspan, flutter, pulse rate, tail wave, jump frequency, and more.
+- **Look & Shimmer:** Hue Shift (°), Shimmer, Sparkle, Distance Fade (fog), Trail length, Trail fade rate, Background Grid lines, and ASCII Detail resolution.
 
-**Animals** (after [ascii-animals](https://github.com/DesignerStephen1/ascii-animals)):
+---
 
-| Animal | Behaviour |
-| :--- | :--- |
-| Butterflies | flutter and glide; curious about a still pointer, scatter from a fast one |
-| Koi | five varieties; meander, bend and swish; click to drop food |
-| Jellyfish | pulse upward trailing tentacles; click to make them shoot away |
-| Dragonflies | dart, hover, dart; flee when you get close |
-| Frogs | sit, blink, leap to a clear spot with a splash; watch your pointer |
-| Cranes | slow V formations; click to startle them into a climb |
-| Crabs | scuttle sideways, wave claws, tuck in when you come close |
-| Fireflies | flash, then gradually synchronise; click to flash them all |
-| Fish School | flocks at three depths; scatter and startle |
-| Starlings | a murmuration that bends around the pointer |
+### 2. Custom ASCII Media & Videos (Asciify Engine)
+- **Image & Video Support:** Drop or upload any image (`jpg`, `png`, `webp`) or video (`mp4`, `webm`, `ogg`) into any of the 3 custom slots.
+- **Real-Time Video ASCII Engine:** Decodes and renders looping video in ASCII at 60 FPS in real-time.
+- **Slot Renaming:** Name your custom slots directly (e.g., *"Cat in Leaves"*, *"Matrix Loop"*). Your custom names appear in the drawer and top selection pill.
+- **Phosphor Backlight Glow:** Soft luminous backlight ambiance that mimics retro phosphor terminals.
+- **Fluid Gas Flow (Navier-Stokes Advection):** Smooth, billowing smoke wake follows the pointer with lateral plume expansion, vorticity curl, and ambient micro-drift.
+- **Concentric Traveling Ripples:** Water displacement waves propagate and refract with velocity and clicks.
+- **Flow Dynamics Sliders:** Adjust Flow Velocity (`0.2x–3.0x`), Gas Plume Spread (`0.2x–3.0x`), and Flow Lingering / Dissipation (`0.2x–3.0x`).
+- **Render Modes:** Characters (Classic ASCII ramp), Braille (Unicode `0x2800` dot patterns), Tiles, and Blocks.
+- **Color Themes:** True Color, Cyberpunk, Matrix, Phosphor Amber, and Monochrome.
 
-Each animal has a **Tweaks** panel (sliders icon in the bottom bar): how many, size, speed, depth range, haze, plus its own knobs. Double-click a label to reset it; "Copy changes" exports your values.
+---
 
-**Flows** (fine Braille-dot line art):
-
-| Flow | What it is | Play with it |
-| :--- | :--- | :--- |
-| Curl Currents | particles on swirling curl noise | hover for a vortex · click for a shockwave |
-| Magnetic Lines | field lines between drifting poles | your pointer is a pole · click flips its charge |
-| Wind Map | westerlies with drifting highs (H) and lows (L) | move fast for a gust · click spawns a storm |
-| Strange Attractor | a slowly morphing Clifford attractor | move to bend it · click glides to a new shape |
-| Contours | moving topographic lines with index contours | your pointer raises a hill · click leaves one |
-| Vortex Street | swirls shed behind posts (Kármán street) | move to shed swirls · click plants a post |
-
-**Layering** (Settings → *Layer an animal over worlds*) puts an animal on top of a world. Only animals that belong there are allowed: koi need open water, cranes need sky, fireflies need a warm night. Animals that don't fit are greyed out with the reason. Each world tells layered animals where its sky, water and ground are.
-
-**Time of day:** worlds that follow the clock (all but Campfire and Northern Lights) shift through dawn, day, dusk and night using your local sunrise and sunset: the lake gets a sun by day, city windows switch off, stars fade in daylight. Turn it off in Settings to see each world as designed.
-
-**Live weather:** real rain shows up in Moonlit Lake and Lily Pond, snow sets Winter Pines' snowfall, fog thickens the Night Forest mist, and storms bring more lightning to Rainy City. Off switch in Settings.
-
-**Daily rotation:** the world, animal and flow each change at your local midnight. Each has its own **Keep this forever** pin (bottom right; it pins whichever category you're viewing). Switching scenes crossfades.
-
-## Look & feel
-
-- **Tile look:** creatures and scenery are drawn as solid coloured tiles with a small darker glyph on each, over a faint cell grid (after ascii-animals). Calm areas stay empty.
-- **Character style:** *Auto* (tiles, plus Braille for Flow), or force Tiles, Classic ASCII, Dense ASCII, Braille, Blocks, Geometric or Dots for water, light, fire and trails.
-- **Colour themes:** True Color, Phosphor Amber, Matrix Emerald, Cyberpunk Neon, Ice Blue, Claude Warm, Monochrome.
-- **Calm zone:** the art fades softly behind the clock and search so text stays readable (adjustable).
-- **Interaction strength**, animation speed, font size and density are adjustable. **Reduced motion** (or the OS setting) shows a settled still frame.
-
-## Productivity overlay
-
-- Time-aware greeting (optionally with your name), clock and date.
-- Search with Google, DuckDuckGo, Bing, Brave, Ecosia or a custom URL. Typing an address (`github.com`, `localhost:5173`) opens it directly; bangs `!g !d !b !br !e` pick an engine for one search. `/` focuses search, `Esc` clears it.
-- Shortcuts with favicons.
-- Weather from Open-Meteo. With no city set, Pixora uses your time zone's city (no location prompt). With *Use my location* on, the place name comes from BigDataCloud's free reverse geocoder.
-- ASCII Studio: drop, paste or pick an image. Render as Characters, Braille (Atkinson-dithered) or Blocks (half-block pixels), in full colour, mono, matrix or amber, with auto-levels plus brightness/contrast/gamma. Compare with the original, copy text, or export `.txt` / `.png`.
-
-All fonts are bundled locally. The only network calls are weather (Open-Meteo, plus BigDataCloud only if you turn on *Use my location*) and shortcut favicons. Your wallpaper picture never leaves your computer.
+### 3. Productivity & Interface
+- **Top-Edge Hover Selection Pill:** Sleek scene switcher remains hidden at the top and gracefully reveals only when your cursor hovers near the top-center edge.
+- **Zen Mode:** Clean one-click distraction-free mode (toggle via the Zen button on top right or hotkeys `Z` / `Esc`).
+- **Control Panel Drawer:** Accessible via the top-right gear icon or hotkey `S`. Features pinned or overlay modes.
+- **Conversational Frosted Greeting:** Time-aware greeting in a floating pill with user name customization.
+- **Weather Widget:** Real-time Open-Meteo weather with location lookup (New Delhi by default, custom city input, or device geolocation) and °C / °F switching.
+- **Search & Shortcuts:** Multi-engine search bar (Google, DuckDuckGo, Bing, Brave, Ecosia, Custom URL) with direct URL navigation and shortcut bookmarks.
+- **Display Customization:** Background dimming toggle, reduced motion toggle, and live font / cell size slider.
 
 ## Installation & Setup
 

@@ -5,14 +5,13 @@ import { WeatherData, WeatherService } from '../../services/weatherService';
 import { useLiveStore } from '../../store/useLiveStore';
 
 export const WeatherWidget: React.FC = () => {
-  const { weatherCity, weatherUnits, useGeolocation, showWeather, weatherLink, timeOfDay } = useSettingsStore();
+  const { weatherCity, weatherUnits, useGeolocation, showWeather } = useSettingsStore();
   const publish = useLiveStore((s) => s.setWeather);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Fetch when shown, or when the scenes use it (weather link / sunrise for time of day).
-    if (!showWeather && !weatherLink && !timeOfDay) return;
+    if (!showWeather) return;
 
     let isMounted = true;
     setLoading(true);
@@ -28,7 +27,7 @@ export const WeatherWidget: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [weatherCity, weatherUnits, useGeolocation, showWeather, weatherLink, timeOfDay, publish]);
+  }, [weatherCity, weatherUnits, useGeolocation, showWeather, publish]);
 
   if (!showWeather) return null;
 
@@ -71,16 +70,23 @@ export const WeatherWidget: React.FC = () => {
   }
 
   const unitSymbol = weatherUnits === 'fahrenheit' ? '°F' : '°C';
+  const displayCity =
+    weather.city &&
+    ['dadri', 'dādri', 'noida', 'greater noida', 'ghaziabad', 'delhi', 'calcutta', 'kolkata'].includes(
+      weather.city.toLowerCase().trim()
+    )
+      ? 'New Delhi'
+      : weather.city || 'New Delhi';
 
   return (
     <div
-      className="flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-panel text-xs text-slate-200 shadow-md select-none border border-white/10"
-      title={`${weather.condition} in ${weather.city}`}
+      className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0c0e14]/85 backdrop-blur-2xl text-xs text-white shadow-xl select-none border border-white/12"
+      title={`${weather.condition} in ${displayCity}`}
     >
       {renderIcon(weather.icon)}
-      <span className="font-semibold">{weather.temp}{unitSymbol}</span>
-      <span className="text-slate-400">•</span>
-      <span className="text-slate-300 font-medium truncate max-w-[120px]">{weather.city}</span>
+      <span className="font-semibold text-white">{weather.temp}{unitSymbol}</span>
+      <span className="text-slate-500">•</span>
+      <span className="text-slate-200 font-medium truncate max-w-[120px]">{displayCity}</span>
     </div>
   );
 };

@@ -1,22 +1,5 @@
 import type { RenderGrid } from '../engine/core/RenderGrid';
 import type { InputState, ResolvedStyle } from './engine';
-import type { SkyState, WeatherKind } from '../engine/core/Sky';
-
-/** The three things a new tab can show. */
-export type SceneKind = 'world' | 'animal' | 'flow';
-
-export type WorldId =
-  | 'underwater'
-  | 'ripples'
-  | 'frog-pond'
-  | 'cosmic-aurora'
-  | 'campfire'
-  | 'zen-garden'
-  | 'meadow'
-  | 'winter-pines'
-  | 'firefly-forest'
-  | 'rainy-city'
-  | 'your-image';
 
 export type AnimalId =
   | 'butterflies'
@@ -25,41 +8,21 @@ export type AnimalId =
   | 'dragonflies'
   | 'frogs'
   | 'cranes'
-  | 'crabs'
-  | 'fireflies'
-  | 'fish'
-  | 'starlings';
+  | 'crabs';
 
-export type FlowId = 'curl' | 'magnetic' | 'wind' | 'attractor' | 'contours' | 'vortex';
+export type CustomSlotId = 'custom-1' | 'custom-2' | 'custom-3';
 
-/** Any renderable scene. */
-export type EnvironmentId = WorldId | AnimalId | FlowId;
+export type SceneId = AnimalId | CustomSlotId;
 
-/** What a world offers living things (used by the layering rules). */
-export interface WorldTraits {
-  /** 'surface' = open water seen from above, 'underwater' = inside the water, 'shore' = water edge. */
-  water: 'none' | 'surface' | 'underwater' | 'shore';
-  sky: boolean;
-  ground: boolean;
-  flowers: boolean;
-  season: 'warm' | 'cold' | 'any';
-  time: 'night' | 'dusk' | 'day' | 'any';
-}
+/** Any renderable scene identifier (backward compatibility alias). */
+export type EnvironmentId = SceneId;
 
-/** What an animal needs from a world to be layered onto it. */
-export interface AnimalNeeds {
-  water?: WorldTraits['water'][];
-  sky?: boolean;
-  ground?: boolean;
-  flowers?: boolean;
-  season?: WorldTraits['season'][];
-  time?: WorldTraits['time'][];
-  /** Human reason shown when a world doesn't fit. */
-  why: string;
-}
+export type SceneKind = 'animal' | 'custom';
+
+export type Zone = 'sky' | 'water' | 'ground' | 'any';
 
 export interface SceneMeta {
-  id: EnvironmentId;
+  id: SceneId;
   kind: SceneKind;
   name: string;
   short: string;
@@ -67,89 +30,50 @@ export interface SceneMeta {
   description: string;
   interactions: string;
   accent: string;
-  /** Built and selectable. Planned scenes stay hidden until they ship. */
-  ready: boolean;
-  /** Left out of daily rotation (personal scenes like Your Image). */
-  noRotate?: boolean;
-  traits?: WorldTraits;
-  needs?: AnimalNeeds;
+  slotIndex?: number;
 }
 
-/** @deprecated kept for older imports. */
-export type EnvironmentMeta = SceneMeta;
-
-/**
- * Where an animal may live inside the current scene, in CSS pixels. A world
- * supplies this when an animal is layered over it; alone, an animal gets the
- * whole screen.
- */
 export interface Habitat {
-  /** Region the animal should stay within. */
   top: number;
   bottom: number;
   left: number;
   right: number;
-  /** Y of a water surface (for swimmers / splashes), if any. */
   waterY?: number;
-  /** Y of the ground line (for walkers), if any. */
   groundY?: number;
-  /** Bottom of the open sky (for flyers), if the world has a horizon. */
   skyBottom?: number;
 }
 
-/** Where in a world an animal lives. */
-export type Zone = 'sky' | 'water' | 'ground' | 'any';
-
-/** Everything a scene needs each step. */
 export interface WorldContext {
-  grid: RenderGrid;
-  /** Viewport size in CSS pixels. */
   width: number;
   height: number;
+  grid: RenderGrid;
   input: InputState;
-  /** Style for field layers (water, aurora, trails…). */
   style: ResolvedStyle;
-  /** True when the user left Character Style on Auto — scenes may use bespoke glyph ramps. */
   auto: boolean;
-  /** 0.5 on weak hardware, 1 normally — scenes scale populations by it. */
-  quality: number;
-  /** Space available to animals (whole screen unless layered over a world). */
   habitat: Habitat;
-  /** True when this scene is drawn as a layer on top of a world. */
-  layered: boolean;
-  /** Background colour far creatures fade toward (packed RGB). */
+  time: number;
+  quality: number;
   bg: number;
-  /** Light right now (time of day). Worlds that follow the clock adapt to it. */
-  sky: SkyState;
-  /** Live weather where the user is ('clear' when unknown or turned off). */
-  weather: WeatherKind;
-  /** Box of the clock / search / shortcuts; big features should stay clear of it. */
-  safe: { x: number; y: number; w: number; h: number } | null;
+  safe?: { x: number; y: number; w: number; h: number } | null;
+  layered?: boolean;
+  sky?: any;
+  weather?: any;
 }
 
 export interface IEnvironment {
   readonly id: EnvironmentId;
-  /** Style used when the user leaves Character Style on Auto. */
   readonly preferredStyle: ResolvedStyle;
-  /** Vertical background gradient, top → bottom, as packed RGB. */
   readonly backdrop: number[];
+  readonly backdropDay?: number[];
+  readonly followsClock?: boolean;
+  readonly zone?: Zone;
   init(ctx: WorldContext): void;
-  /** Called after the grid changes size. Default behaviour re-seeds the scene. */
   resize(ctx: WorldContext): void;
-  /** Fixed-step simulation; dt in seconds (already scaled by animation speed). */
   update(dt: number, ctx: WorldContext): void;
   render(ctx: WorldContext): void;
-  /** Worlds: the space they offer an animal layered on top. */
-  habitat?(width: number, height: number): Habitat;
-  /** Worlds: shift with the local time of day (backdrop + colour grade). */
-  readonly followsClock?: boolean;
-  /** Worlds: daytime backdrop stops (blended with `backdrop` by light). */
-  readonly backdropDay?: number[];
-  /** Animals: which part of a world they live in when layered. */
-  readonly zone?: Zone;
-  /** True when nothing would change on screen; the engine may skip redrawing. */
+  isIdle?(): boolean;
   idle?(): boolean;
-  /** Animals: apply Tweaks-panel values. */
-  tune?(values: Record<string, number> | undefined): void;
   destroy?(): void;
+  habitat?(width: number, height: number): Habitat;
+  tune?(values: Record<string, number> | undefined): void;
 }

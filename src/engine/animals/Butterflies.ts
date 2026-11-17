@@ -4,37 +4,60 @@ import { SimplexNoise } from '../physics/SimplexNoise';
 import { Layer, code } from '../core/RenderGrid';
 import { gradientLUT, hex } from '../core/Color';
 import { drawBody, spot } from '../draw/Shapes';
-import { Course, Creature, Knob, depthScale, depthSpeed, hazed, newCreature, population } from './kit';
+import { Course, Creature, Knob, depthScale, depthSpeed, hazed, newCreature, population, turnToward } from './kit';
 
 interface Fly extends Creature {
   species: number;
   flap: number;
   /** Seconds left gliding (wings held open, no beat). */
   glide: number;
+  /** Brownian micro-jitter phase */
+  jitterPhase: number;
 }
 
-/** Wing palettes: [edge/vein, base, bright, spot]. */
+/**
+ * Wing palettes: [edge/vein, base, bright, spot].
+ * 6 vivid species inspired by ascii-animals and natural morphos/swallowtails.
+ */
 const SPECIES = [
-  [hex('#1c1008'), hex('#c2410c'), hex('#fb923c'), hex('#fff7ed')], // monarch
-  [hex('#0c1a3a'), hex('#1d4ed8'), hex('#60a5fa'), hex('#e0f2fe')], // blue
-  [hex('#3f2a06'), hex('#ca8a04'), hex('#fde047'), hex('#fefce8')], // brimstone
-  [hex('#3f3f46'), hex('#d4d4d8'), hex('#fafafa'), hex('#18181b')], // cabbage white
-  [hex('#3b0b2e'), hex('#be185d'), hex('#f9a8d4'), hex('#fdf2f8')], // pink
+  // 1. Blue Morpho: iridescent navy, sapphire, sky, white pearl spots
+  [hex('#081026'), hex('#1d4ed8'), hex('#38bdf8'), hex('#f0f9ff')],
+  // 2. Monarch: velvet carbon black, cadmium orange, fiery gold, white dots
+  [hex('#14100c'), hex('#c2410c'), hex('#fb923c'), hex('#fffbeb')],
+  // 3. Emerald Swallowtail: velvet forest, vibrant emerald, mint shimmer, seafoam
+  [hex('#052014'), hex('#047857'), hex('#34d399'), hex('#ecfdf5')],
+  // 4. Madagascan Sunset Moth: deep indigo, royal violet, magenta flame, electric cyan
+  [hex('#1e1035'), hex('#7e22ce'), hex('#ec4899'), hex('#67e8f9')],
+  // 5. Golden Birdwing / Brimstone: charcoal, warm amber, glowing canary yellow, cream
+  [hex('#1c1917'), hex('#b45309'), hex('#facc15'), hex('#fefce8')],
+  // 6. Purple Emperor: dark obsidian, imperial purple, radiant lilac, brilliant silver
+  [hex('#110d24'), hex('#6b21a8'), hex('#c084fc'), hex('#ffffff')],
 ];
-const LUTS = SPECIES.map(([edge, base, bright, dot]) => gradientLUT([[0, edge], [0.18, edge], [0.3, base], [0.75, bright], [0.92, bright], [1, dot]]));
+
+const LUTS = SPECIES.map(([edge, base, bright, dot]) =>
+  gradientLUT([
+    [0, edge],
+    [0.18, edge],
+    [0.32, base],
+    [0.72, bright],
+    [0.9, bright],
+    [1, dot],
+  ])
+);
+
 const WING_TEX = Uint32Array.from(Array.from(".:;=").map(code));
 
 /**
- * Butterflies drifting along the course with a fluttery, bobbing flight and
- * the odd glide. Wings are tile silhouettes (fore + hind wing per side) whose
- * span follows the wingbeat. A still pointer draws them in; a fast one
- * scatters them; a click sends the nearby ones spiralling up.
+ * Colorful butterflies drifting along a course with erratic Brownian fluttering,
+ * turbulent bobbing, and majestic flat-winged glides.
+ * Wings are broad and vibrant with forewings and hindwings, delicate vein lattices,
+ * and edge pearls. Heading dynamically tracks flight velocity.
  */
 export class Butterflies extends AnimalBase {
   public readonly id = 'butterflies';
   public readonly zone = 'any' as const;
   public static knobs: Knob[] = [
-    { key: 'flutter', label: 'Flutter', min: 0.3, max: 2.5, step: 0.05, value: 1, hint: 'Wingbeat speed and how much they bob.' },
+    { key: 'flutter', label: 'Flutter', min: 0.3, max: 2.5, step: 0.05, value: 1, hint: 'Wingbeat speed and erratic bobbing.' },
     { key: 'curious', label: 'Curiosity', min: 0, max: 2, step: 0.05, value: 1, hint: 'How strongly a still pointer draws them in.' },
   ];
   private course = new Course(-0.15, 0.6);
@@ -42,11 +65,18 @@ export class Butterflies extends AnimalBase {
   private flies: Fly[] = [];
 
   public init(ctx: WorldContext): void {
-    const n = population(ctx.habitat, 70000, this.k('density'), ctx.quality, 3, 40);
+    const n = population(ctx.habitat, 65000, this.k('density'), ctx.quality, 3, 36);
     this.flies = [];
     for (let i = 0; i < n; i++) {
       const c = newCreature(i, ctx.habitat, this.k('farthest'));
-      this.flies.push({ ...c, species: i % SPECIES.length, flap: Math.random() * 6, glide: 0 });
+      c.heading = this.course.heading + (Math.random() - 0.5) * 0.4;
+      this.flies.push({
+        ...c,
+        species: i % SPECIES.length,
+        flap: Math.random() * Math.PI * 2,
+        glide: 0,
+        jitterPhase: Math.random() * 100,
+      });
     }
   }
 
@@ -57,45 +87,81 @@ export class Butterflies extends AnimalBase {
     const speed = this.k('speed');
     const flutter = this.k('flutter');
     const sp = Math.hypot(input.vx, input.vy);
+
+    // Click startle: nearby butterflies burst upward in spiral
     for (const c of input.clicks) {
       for (const f of this.flies) {
         const d = Math.hypot(f.x - c.x, f.y - c.y);
-        if (d < 240) {
-          f.vx += ((f.x - c.x) / (d + 1)) * 160;
-          f.vy -= 140 + Math.random() * 80;
+        if (d < 260) {
+          f.vx += ((f.x - c.x) / (d + 1)) * 220;
+          f.vy -= 180 + Math.random() * 120;
           f.glide = 0;
         }
       }
     }
+
     for (const f of this.flies) {
+      f.jitterPhase += dt * (8 + 12 * flutter);
       const s = depthSpeed(f.depth) * speed;
-      const wander = this.noise.noise2D(f.seed, this.time * 0.25) * 1.2;
-      const dir = this.course.heading + wander;
-      let ax = Math.cos(dir) * 46 * s;
-      let ay = Math.sin(dir) * 30 * s + Math.sin(f.flap * 0.5) * 40 * flutter;
+
+      // Organic low-frequency wander
+      const wander = this.noise.noise2D(f.seed, this.time * 0.22) * 1.4;
+      const baseDir = this.course.heading + wander;
+
+      // Base directional propulsion
+      let ax = Math.cos(baseDir) * 52 * s;
+      let ay = Math.sin(baseDir) * 36 * s;
+
+      // Brownian motion & erratic micro-turbulences
+      const brownian = 48 * flutter * (0.8 + Math.sin(f.jitterPhase) * 0.3);
+      ax += (Math.sin(f.jitterPhase * 1.7 + f.seed) + (Math.random() - 0.5) * 0.8) * brownian;
+      ay += (Math.cos(f.jitterPhase * 2.3 + f.seed * 1.4) + (Math.random() - 0.5) * 0.8) * brownian;
+
+      // Vertical bobbing synchronized with wingbeat
+      ay += Math.sin(f.flap) * 38 * flutter;
+
+      // Interactive pointer forces
       if (input.active) {
         const dx = input.x - f.x;
         const dy = input.y - f.y;
         const d = Math.hypot(dx, dy);
-        if (sp > 700 && d < 220) {
-          ax -= (dx / (d + 1)) * 420;
-          ay -= (dy / (d + 1)) * 420;
-        } else if (sp < 60 && d < 320 && d > 24) {
-          const pull = this.k('curious') * input.intensity * 90;
+        if (sp > 600 && d < 240) {
+          // Fast pointer scatters them
+          ax -= (dx / (d + 1)) * 460;
+          ay -= (dy / (d + 1)) * 460;
+        } else if (sp < 60 && d < 340 && d > 20) {
+          // Still pointer draws them gently in
+          const pull = this.k('curious') * input.intensity * 95;
           ax += (dx / d) * pull;
           ay += (dy / d) * pull;
         }
       }
-      f.vx += (ax - f.vx) * Math.min(1, dt * 2);
-      f.vy += (ay - f.vy) * Math.min(1, dt * 2);
+
+      // Smooth acceleration into velocity
+      f.vx += (ax - f.vx) * Math.min(1, dt * 3.5);
+      f.vy += (ay - f.vy) * Math.min(1, dt * 3.5);
       f.x += f.vx * dt;
       f.y += f.vy * dt;
-      if (f.glide > 0) f.glide -= dt;
-      else {
-        f.flap += dt * 14 * flutter * (0.8 + f.depth * 0.4);
-        if (Math.random() < dt * 0.15) f.glide = 0.6 + Math.random() * 0.8;
+
+      // Dynamic flight heading: align directly with motion vector!
+      const currentSpeed = Math.hypot(f.vx, f.vy);
+      if (currentSpeed > 6) {
+        const targetHeading = Math.atan2(f.vy, f.vx);
+        f.heading = turnToward(f.heading, targetHeading, dt * 6.5);
       }
-      this.course.recycle(f, habitat, 80);
+
+      // Wingbeat & glide cycle
+      if (f.glide > 0) {
+        f.glide -= dt;
+      } else {
+        f.flap += dt * 15 * flutter * (0.8 + f.depth * 0.4);
+        // Random transition to a smooth, flat-winged glide
+        if (Math.random() < dt * 0.18) {
+          f.glide = 0.5 + Math.random() * 0.9;
+        }
+      }
+
+      this.course.recycle(f, habitat, 100);
     }
   }
 
@@ -103,45 +169,92 @@ export class Butterflies extends AnimalBase {
     const { grid, bg } = ctx;
     const size = this.k('size');
     const fog = this.k('fog');
-    // Far ones first so near ones overwrite them cleanly.
+
+    // Draw far butterflies first
     const order = [...this.flies].sort((a, b) => a.depth - b.depth);
+
     for (const f of order) {
       const scaleK = depthScale(f.depth) * size;
-      const span = grid.cellWidth * 12 * scaleK;
-      const open = f.glide > 0 ? 1 : 0.25 + 0.75 * Math.abs(Math.cos(f.flap));
+      // Enlarged wingspan for high visibility and majesty
+      const span = grid.cellWidth * 18 * scaleK;
+      const bodyLen = span * 0.85;
+
+      // Wing fold cycle: wings fold toward the center dorsal axis during upstroke
+      const open = f.glide > 0 ? 1 : 0.22 + 0.78 * Math.abs(Math.cos(f.flap));
       const lut = LUTS[f.species];
       const seed = f.seed;
-      const layer = f.depth > 0.75 ? Layer.FX : f.depth > 0.45 ? Layer.NEAR : Layer.MID;
+      const layer = f.depth > 0.72 ? Layer.FX : f.depth > 0.4 ? Layer.NEAR : Layer.MID;
+
+      // Draw butterfly body with heading aligned with its flight direction!
+      // In body space: u is along heading (forward +u, rear -u), v is across wings (±v)
       drawBody(grid, {
-        x: f.x, y: f.y, heading: 0, length: span, width: span * 0.75, extent: 0.7,
+        x: f.x,
+        y: f.y,
+        heading: f.heading,
+        length: bodyLen,
+        width: span,
+        extent: 0.75,
         sampler: (u, v) => {
-          const au = Math.abs(u);
-          if (au < 0.035 && v > -0.2 && v < 0.28) return 0.05; // body
-          const wu = au / Math.max(0.15, open); // wings fold toward the body
-          // Forewing
-          const fx = (wu - 0.27) / 0.24;
-          const fy = (v + 0.1) / 0.22;
+          // u: -0.5 (rear/abdomen) to +0.5 (head/snout)
+          // v: -0.5 (left wing) to +0.5 (right wing)
+          const av = Math.abs(v);
+
+          // Central thorax & abdomen (along u, centered on v = 0)
+          if (av < 0.045 && u > -0.38 && u < 0.32) {
+            return 0.08; // dark velvet body core
+          }
+
+          // Wings fold toward the body line: scale lateral distance by open fraction
+          const wv = av / Math.max(0.16, open);
+
+          // Forewing: larger, sweeps forward and out (u from -0.08 to 0.42)
+          const fx = (u - 0.12) / 0.28;
+          const fy = (wv - 0.26) / 0.22;
           const fore = fx * fx + fy * fy;
-          // Hindwing
-          const hx = (wu - 0.2) / 0.17;
-          const hy = (v - 0.17) / 0.16;
+
+          // Hindwing: rounded, sits back and lower (u from -0.38 to 0.05)
+          const hx = (u + 0.16) / 0.22;
+          const hy = (wv - 0.21) / 0.18;
           const hind = hx * hx + hy * hy;
+
           const e = Math.min(fore, hind);
-          if (e > 1 || au < 0.035) return 0;
-          if (e > 0.72) return 0.1; // dark edge
-          const dot = Math.sin(u * 40 + seed) * Math.sin(v * 37 + seed * 0.7) > 0.86;
-          if (dot) return 0.97;
-          return 0.35 + (1 - e) * 0.5;
+          if (e > 1 || av < 0.04) return 0;
+
+          // Wing border: dark velvet rim with subtle scalloping
+          if (e > 0.74) return 0.12;
+
+          // Margin dots / eyespots (pearl white / bright color highlights)
+          const spotPattern = Math.sin(u * 38 + seed) * Math.sin(wv * 34 + seed * 0.7);
+          if (e > 0.62 && spotPattern > 0.82) return 0.98;
+
+          // Radiating wing veins
+          const vein = Math.sin(Math.atan2(fy, fx) * 12 + seed) * 0.12;
+
+          // Vibrant interior wing gradient
+          return Math.max(0.25, Math.min(0.92, 0.45 + (1 - e) * 0.48 + vein));
         },
-        lut, texture: WING_TEX, layer, solid: true, opacity: 0.55 + f.depth * 0.45,
-        fog: (1 - f.depth) * fog, fogColor: bg,
+        lut,
+        texture: WING_TEX,
+        layer,
+        solid: true,
+        opacity: 0.6 + f.depth * 0.4,
+        fog: (1 - f.depth) * fog,
+        fogColor: bg,
       });
-      // Antennae
-      const ax = f.x;
-      const ay = f.y - span * 0.75 * 0.28;
-      const ant = hazed(SPECIES[f.species][0], f.depth, fog, bg);
-      spot(grid, ax - grid.cellWidth * 0.6, ay, code('\''), ant, 0.8, layer);
-      spot(grid, ax + grid.cellWidth * 0.6, ay, code('\''), ant, 0.8, layer);
+
+      // Antennae extending forward and angling out from the head
+      const hx = Math.cos(f.heading);
+      const hy = Math.sin(f.heading);
+      const lx = -hy;
+      const ly = hx;
+      const headX = f.x + hx * bodyLen * 0.32;
+      const headY = f.y + hy * bodyLen * 0.32;
+      const antSpread = span * 0.12;
+      const antReach = bodyLen * 0.18;
+      const antCol = hazed(SPECIES[f.species][0], f.depth, fog, bg);
+
+      spot(grid, headX + hx * antReach + lx * antSpread, headY + hy * antReach + ly * antSpread, code('\''), antCol, 0.85, layer);
+      spot(grid, headX + hx * antReach - lx * antSpread, headY + hy * antReach - ly * antSpread, code('\''), antCol, 0.85, layer);
     }
   }
 }

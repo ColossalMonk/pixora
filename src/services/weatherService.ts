@@ -1,14 +1,17 @@
 import { StorageService } from './storageService';
 import type { WeatherKind } from '../engine/core/Sky';
 
-/** Best-effort city from the browser's time zone (e.g. "Asia/Kolkata" → "Kolkata"). No network, no prompt. */
+/** Best-effort city from the browser's time zone. Maps Indian standard time to New Delhi. */
 export function guessCity(): string {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    if (tz.includes('Calcutta') || tz.includes('Kolkata') || tz === 'Asia/Calcutta' || tz === 'Asia/Kolkata') {
+      return 'New Delhi';
+    }
     const last = tz.split('/').pop() || '';
-    return last.replace(/_/g, ' ');
+    return last.replace(/_/g, ' ') || 'New Delhi';
   } catch {
-    return '';
+    return 'New Delhi';
   }
 }
 
@@ -28,8 +31,14 @@ export interface WeatherData {
   sunset?: string;
 }
 
-const CACHE_KEY = 'pixora_weather_cache_v3';
+const CACHE_KEY = 'pixora_weather_cache_v8';
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+const NCR_ALIASES = ['dadri', 'dādri', 'noida', 'greater noida', 'ghaziabad', 'delhi', 'new delhi', 'calcutta', 'kolkata'];
+
+function isNcrOrCalcutta(name: string): boolean {
+  return NCR_ALIASES.some((alias) => name.toLowerCase().includes(alias));
+}
 
 export class WeatherService {
   public static async getWeather(
@@ -38,7 +47,10 @@ export class WeatherService {
     unit: 'celsius' | 'fahrenheit' = 'celsius'
   ): Promise<WeatherData | null> {
     try {
-      const city = cityName.trim() || guessCity();
+      let city = cityName.trim() || guessCity();
+      if (!city || isNcrOrCalcutta(city)) {
+        city = 'New Delhi';
+      }
       const requestKey = `${useGeo ? 'geo' : city.toLowerCase()}|${unit}`;
       const cached = await StorageService.get<WeatherData | null>(CACHE_KEY, null);
       if (cached && cached.key === requestKey && Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -54,21 +66,38 @@ export class WeatherService {
           const pos = await this.getCurrentPosition();
           lat = pos.coords.latitude;
           lon = pos.coords.longitude;
-          displayCity = (await this.placeName(lat, lon)) || guessCity() || 'Your location';
+          displayCity = (await this.placeName(lat, lon)) || guessCity() || 'New Delhi';
         } catch {
           // Fall back to city geocoding
         }
       }
 
+      if (isNcrOrCalcutta(displayCity)) {
+        displayCity = 'New Delhi';
+        lat = 28.6139;
+        lon = 77.209;
+      }
+
       if (Number.isNaN(lat) && city) {
-        const geoRes = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`
-        );
-        const geoData = await geoRes.json();
-        if (geoData.results && geoData.results.length > 0) {
-          lat = geoData.results[0].latitude;
-          lon = geoData.results[0].longitude;
-          displayCity = geoData.results[0].name;
+        if (city.toLowerCase() === 'new delhi') {
+          lat = 28.6139;
+          lon = 77.209;
+          displayCity = 'New Delhi';
+        } else {
+          const geoRes = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`
+          );
+          const geoData = await geoRes.json();
+          if (geoData.results && geoData.results.length > 0) {
+            lat = geoData.results[0].latitude;
+            lon = geoData.results[0].longitude;
+            displayCity = geoData.results[0].name;
+            if (displayCity.toLowerCase().includes('calcutta') || displayCity.toLowerCase().includes('kolkata')) {
+              displayCity = 'New Delhi';
+              lat = 28.6139;
+              lon = 77.209;
+            }
+          }
         }
       }
 

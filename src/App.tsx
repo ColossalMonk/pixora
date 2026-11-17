@@ -4,159 +4,124 @@ import { ConversationalGreeting } from './components/greeting/ConversationalGree
 import { CentralSearchBar } from './components/search/CentralSearchBar';
 import { ShortcutsBar } from './components/shortcuts/ShortcutsBar';
 import { AmbientClock } from './components/widgets/AmbientClock';
-import { WeatherWidget } from './components/widgets/WeatherWidget';
-import { EnvironmentGallery } from './components/gallery/EnvironmentGallery';
-import { ImageConverterModal } from './components/converter/ImageConverterModal';
-import { SettingsDrawer } from './components/settings/SettingsDrawer';
+import { TopBar } from './components/navigation/TopBar';
+import { EdgeHoverDrawer } from './components/drawer/EdgeHoverDrawer';
 import { useSettingsStore } from './store/useSettingsStore';
-import { WorldBar } from './components/worlds/WorldBar';
-import { setWallpaperFile } from './components/worlds/wallpaperActions';
-import { scenesOf } from './data/catalog';
-import { activeOf } from './store/useSettingsStore';
-import { Compass, Image as ImageIcon, Sliders } from 'lucide-react';
+import { ImageStore } from './services/imageStore';
+import { CustomSlotId } from './types/environment';
 
 export const App: React.FC = () => {
-  const settings = useSettingsStore();
-  const { loadSettings, showTopWorldCapsule, sceneKind, showScene } = settings;
-  const current = activeOf(settings, sceneKind);
-
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
-  const [isConverterOpen, setIsConverterOpen] = useState(false);
+  const { loadSettings, activeScene, setActiveScene } = useSettingsStore();
+  const [isZenMode, setIsZenMode] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [dropToast, setDropToast] = useState<string | null>(null);
   const focusRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
 
-  // Drop a picture anywhere on the page to make it the wallpaper (Your Image).
+  // Global hotkeys: 'Z' for Zen Mode, 'S' for Settings, 'Esc' to exit
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName || '')) return;
+      if (e.key === 'z' || e.key === 'Z') {
+        e.preventDefault();
+        setIsZenMode((prev) => !prev);
+      } else if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        setIsSettingsOpen((prev) => !prev);
+      } else if (e.key === 'Escape') {
+        if (isSettingsOpen) {
+          e.preventDefault();
+          setIsSettingsOpen(false);
+        } else if (isZenMode) {
+          e.preventDefault();
+          setIsZenMode(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isZenMode, isSettingsOpen]);
+
+  // Drop an image anywhere on the page to asciify with glowing effect
   useEffect(() => {
     const over = (e: DragEvent) => {
       if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
     };
-    const drop = (e: DragEvent) => {
-      if (e.defaultPrevented) return; // e.g. ASCII Studio handled it
-      const f = Array.from(e.dataTransfer?.files ?? []).find((x) => x.type.startsWith('image/'));
-      if (!f) return;
+    const drop = async (e: DragEvent) => {
+      const file = Array.from(e.dataTransfer?.files ?? []).find((x) => x.type.startsWith('image/'));
+      if (!file) return;
       e.preventDefault();
-      setWallpaperFile(f);
+
+      const targetSlot: CustomSlotId = activeScene.startsWith('custom-')
+        ? (activeScene as CustomSlotId)
+        : 'custom-1';
+
+      await ImageStore.saveImage(targetSlot, file);
+      setActiveScene(targetSlot);
+
+      setDropToast(`Applied to ${targetSlot.replace('-', ' ').toUpperCase()} with Asciify Glow`);
+      setTimeout(() => setDropToast(null), 3500);
     };
+
     window.addEventListener('dragover', over);
     window.addEventListener('drop', drop);
     return () => {
       window.removeEventListener('dragover', over);
       window.removeEventListener('drop', drop);
     };
-  }, []);
+  }, [activeScene, setActiveScene]);
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#08080a] text-slate-100 font-sans select-none">
-      {/* 1. Generative ASCII Animation Canvas (Background Layer) */}
+    <div className="relative w-screen h-screen overflow-hidden bg-[#06070c] text-slate-100 font-sans select-none">
+      {/* 1. Procedural Simulation Canvas (Full Screen) */}
       <AsciiCanvas focusRef={focusRef} />
 
-      {/* 2. Top Navigation Bar (Productivity Header) */}
-      <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4 md:p-6 pointer-events-none">
-        {/* Left: Weather Widget */}
-        <div className="pointer-events-auto">
-          <WeatherWidget />
-        </div>
+      {/* 2. Top Bar: Weather (Left), Selection Pill on Top Hover (Center), Zen & Gear Icons (Right) */}
+      <TopBar
+        isZenMode={isZenMode}
+        onToggleZen={() => setIsZenMode(!isZenMode)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
 
-        {/* Center: Optional Top Worlds Capsule Switcher (Hidden in settings, off by default) */}
-        {showTopWorldCapsule && (
-          <nav
-            aria-label="Quick World Switcher"
-            className="hidden md:flex items-center gap-1 p-1 rounded-full glass-panel shadow-lg pointer-events-auto border border-white/10 animate-fade-in"
-          >
-            {scenesOf(sceneKind).map((w) => {
-              const isActive = current === w.id;
-              return (
-                <button
-                  key={w.id}
-                  type="button"
-                  onClick={() => showScene(sceneKind, w.id)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                    isActive
-                      ? 'bg-teal-400 text-slate-950 font-semibold shadow-sm'
-                      : 'text-slate-300 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {w.short}
-                </button>
-              );
-            })}
-          </nav>
-        )}
-
-        {/* Right: Quick Tool Pills */}
-        <div className="flex items-center gap-2 pointer-events-auto">
-          {/* Environment Gallery */}
-          <button
-            type="button"
-            onClick={() => setIsGalleryOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-panel hover:glass-button text-xs font-medium text-slate-200 shadow-md transition-all hover:scale-105"
-            title="Browse Procedural Environments"
-          >
-            <Compass className="w-3.5 h-3.5 text-teal-400" />
-            <span className="hidden sm:inline">Worlds</span>
-          </button>
-
-          {/* Image-to-ASCII Studio */}
-          <button
-            type="button"
-            onClick={() => setIsConverterOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-panel hover:glass-button text-xs font-medium text-slate-200 shadow-md transition-all hover:scale-105"
-            title="Image to ASCII Studio"
-          >
-            <ImageIcon className="w-3.5 h-3.5 text-purple-400" />
-            <span className="hidden sm:inline">ASCII Studio</span>
-          </button>
-
-          {/* Settings Drawer */}
-          <button
-            type="button"
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-2 rounded-full glass-panel hover:glass-button text-slate-300 hover:text-white shadow-md transition-all hover:scale-105"
-            title="Settings & Customization"
-          >
-            <Sliders className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </header>
-
-      {/* 3. Center Dashboard Interface */}
-      <main className="relative z-10 w-full h-full flex flex-col items-center justify-center p-4 pointer-events-none">
-        <div ref={focusRef} className="pointer-events-auto w-full max-w-xl flex flex-col items-center">
-          {/* Ambient Typography Clock */}
-          <div className="mb-4">
+      {/* 3. Central Interactive Hub (Clock, Greeting, Search, Shortcuts) */}
+      <main
+        ref={focusRef}
+        className={`absolute inset-0 z-20 flex flex-col items-center justify-center p-4 pointer-events-none transition-all duration-700 ease-out ${
+          isZenMode ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'
+        }`}
+      >
+        <div className="w-full max-w-2xl flex flex-col items-center pointer-events-auto">
+          {/* Ambient Monospace Clock */}
+          <div className="mb-3">
             <AmbientClock />
           </div>
 
           {/* Conversational Greeting */}
-          <ConversationalGreeting />
+          <div className="mb-6">
+            <ConversationalGreeting />
+          </div>
 
-          {/* Omnipresent Central Search Bar */}
+          {/* Liquid Glass Search Bar */}
           <CentralSearchBar />
 
-          {/* Shortcuts Grid */}
+          {/* Customizable Shortcuts Bar */}
           <ShortcutsBar />
         </div>
       </main>
 
-      {/* 4. World switcher + Keep this forever */}
-      <WorldBar />
+      {/* 4. Drop Toast Notification */}
+      {dropToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-teal-500/20 border border-teal-400/40 text-teal-200 text-xs shadow-2xl backdrop-blur-md animate-fade-in flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-teal-400 animate-ping" />
+          <span>{dropToast}</span>
+        </div>
+      )}
 
-      {/* 5. Modals & Drawers */}
-      <EnvironmentGallery
-        isOpen={isGalleryOpen}
-        onClose={() => setIsGalleryOpen(false)}
-      />
-
-      <ImageConverterModal
-        isOpen={isConverterOpen}
-        onClose={() => setIsConverterOpen(false)}
-      />
-
-      <SettingsDrawer
+      {/* 5. Control Panel / Drawer (Opens on clicking Gear icon) */}
+      <EdgeHoverDrawer
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />

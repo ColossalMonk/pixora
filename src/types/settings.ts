@@ -1,6 +1,5 @@
 import { CharacterStyle, ColorTheme, PerformanceTier } from './engine';
-import { AnimalId, FlowId, SceneKind, WorldId } from './environment';
-import type { WallpaperOptions } from '../engine/environments/ImageWorld';
+import { CustomSlotId, SceneId } from './environment';
 
 export interface ShortcutItem {
   id: string;
@@ -15,31 +14,53 @@ export type SearchEngineId = 'google' | 'duckduckgo' | 'bing' | 'brave' | 'ecosi
 export interface SearchEngine {
   id: SearchEngineId;
   name: string;
-  searchUrl: string; // e.g. "https://www.google.com/search?q=%s"
+  searchUrl: string;
   icon: string;
 }
 
-export interface UserSettings {
-  // Scenes
-  /** Which category the tab shows. */
-  sceneKind: SceneKind;
-  activeWorld: WorldId;
-  activeAnimal: AnimalId;
-  activeFlow: FlowId;
-  /** Opt-in: layer a fitting animal over the world. */
-  layerAnimals: boolean;
-  keepAnimal: boolean;
-  keepFlow: boolean;
-  /** Tweaks-panel values per animal (only changed knobs are stored). */
-  animalTweaks: Record<string, Record<string, number>>;
-  /** Your Image: style, colour, effect and tone. */
-  wallpaper: WallpaperOptions;
-  /** Worlds shift with the local time of day. */
-  timeOfDay: boolean;
-  /** Worlds react to the real weather (rain, snow, fog, storms). */
-  weatherLink: boolean;
+export type CustomRenderMode = 'tiles' | 'characters' | 'braille' | 'blocks';
+export type CustomColorMode = 'full' | 'mono' | 'matrix' | 'amber' | 'cyberpunk';
+export type CustomPointerEffect = 'gas' | 'ripple' | 'drift' | 'none';
 
-  // Engine
+export interface CustomImageConfig {
+  name?: string;
+  mediaType?: 'image' | 'video';
+  renderMode: CustomRenderMode;
+  colorMode: CustomColorMode;
+  brightness: number; // -0.5 .. 0.5
+  contrast: number; // 0.5 .. 2.0
+  gamma: number; // 0.5 .. 2.0
+  invert: boolean;
+  glow: number; // 0 .. 1 subtle backlight glow
+  effect: CustomPointerEffect;
+  flowSpeed: number; // 0.2 .. 3.0
+  flowSpread: number; // 0.2 .. 3.0
+  flowDecay: number; // 0.2 .. 3.0
+}
+
+export const DEFAULT_CUSTOM_CONFIG: CustomImageConfig = {
+  name: '',
+  mediaType: 'image',
+  renderMode: 'characters',
+  colorMode: 'full',
+  brightness: 0,
+  contrast: 1.15,
+  gamma: 1,
+  invert: false,
+  glow: 0.45,
+  effect: 'gas',
+  flowSpeed: 1.0,
+  flowSpread: 1.0,
+  flowDecay: 1.0,
+};
+
+export interface UserSettings {
+  // Active Scene (7 Animals + 3 Custom Image Slots = 10 Total)
+  activeScene: SceneId;
+  customConfigs: Record<CustomSlotId, CustomImageConfig>;
+  animalTweaks: Record<string, Record<string, number | boolean>>;
+
+  // Engine & Look
   characterStyle: CharacterStyle;
   colorTheme: ColorTheme;
   fontSize: number;
@@ -47,7 +68,6 @@ export interface UserSettings {
   animationSpeed: number;
   interactionIntensity: number;
   performanceTier: PerformanceTier;
-  /** 0..1 — fade the art softly behind the clock and search. */
   calmCenter: number;
   reducedMotion: boolean;
 
@@ -56,21 +76,16 @@ export interface UserSettings {
   searchEngine: SearchEngineId;
   customSearchUrl: string;
   shortcuts: ShortcutItem[];
-  
+
   // Weather
   weatherCity: string;
   weatherUnits: 'celsius' | 'fahrenheit';
   useGeolocation: boolean;
 
-  // UI appearance
-  dimBackground: boolean;
+  // UI Visibility
   showClock: boolean;
   showWeather: boolean;
   showGreeting: boolean;
   showShortcuts: boolean;
-  showTopWorldCapsule: boolean; // Hidden inside settings, off by default
-  dailyEnvironmentRotation: boolean; // Rotates to a new living world every day
-  /** "Keep this forever" for worlds (animals and flows have their own pins). */
-  keepWorld: boolean;
-  lastRotationDate: string; // local date YYYY-MM-DD
+  dimBackground: boolean;
 }

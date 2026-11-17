@@ -1,12 +1,13 @@
 import { EngineConfig, InputState } from '../../types/engine';
 import { EnvironmentId, IEnvironment, WorldContext } from '../../types/environment';
-import { RenderGrid } from './RenderGrid';
+import { RenderGrid, Layer, code } from './RenderGrid';
 import { Rasterizer } from './Rasterizer';
 import { calibrateRamps, resolveStyle } from './Charsets';
 import { themeBackdrop, themeLUT } from './PaletteManager';
 import { createEnvironment } from '../environments/registry';
 import { DESIGNED_SKY, SkyState, WeatherKind, blendBackdrop, grade, skyAt } from './Sky';
 import { zoneOf } from '../animals/kit';
+import { hex } from './Color';
 
 const STEP = 1 / 60;
 const MAX_STEPS = 4;
@@ -77,6 +78,7 @@ export class Engine {
   };
   private rawX = -1;
   private rawY = -1;
+  private shockwaves: { x: number; y: number; age: number; maxAge: number }[] = [];
 
   constructor(config?: Partial<EngineConfig>) {
     this.config = { ...DEFAULT_ENGINE_CONFIG, ...config };
@@ -346,6 +348,7 @@ export class Engine {
       sky: this.sky,
       weather: this.weather,
       safe: this.focusRect,
+      time: performance.now() / 1000,
     };
   }
 
@@ -389,7 +392,8 @@ export class Engine {
       return;
     }
     this.running = true;
-    this.lastTime = performance.now();
+    this.lastTime = 0;
+    this.lastRender = 0;
     this.accumulator = 0;
     this.rafId = requestAnimationFrame(this.loop);
   }
@@ -404,11 +408,26 @@ export class Engine {
     if (!this.running) return;
     this.rafId = requestAnimationFrame(this.loop);
 
-    const capFps = this.config.performanceTier === 'low' || this.degrade >= 1 ? 30 : 0;
-    if (capFps && now - this.lastRender < 1000 / capFps - 2) return;
-    this.lastRender = now;
+    // Target frame rate: 30 fps on battery saver / degraded, 60 fps standard.
+    // Throttles rendering and simulation to ensure identical, consistent speed
+    // on 60Hz, 120Hz, 144Hz, 165Hz, 240Hz, or uncapped displays.
+    const targetFps = this.config.performanceTier === 'low' || this.degrade >= 1 ? 30 : 60;
+    const frameInterval = 1000 / targetFps;
 
-    const elapsed = Math.min(0.25, (now - this.lastTime) / 1000);
+    if (this.lastRender > 0) {
+      const delta = now - this.lastRender;
+      if (delta < frameInterval - 1.5) return;
+      this.lastRender = now - (delta % frameInterval);
+    } else {
+      this.lastRender = now;
+    }
+
+    if (this.lastTime === 0) {
+      this.lastTime = now;
+      return;
+    }
+
+    const elapsed = Math.min(0.1, Math.max(0.001, (now - this.lastTime) / 1000));
     this.lastTime = now;
     if (!this.active) return;
 
@@ -419,6 +438,10 @@ export class Engine {
     this.trackPointer(elapsed);
 
     this.accumulator += elapsed;
+    if (this.accumulator > STEP * MAX_STEPS) {
+      this.accumulator = STEP * MAX_STEPS;
+    }
+
     let steps = 0;
     const dt = STEP * this.config.animationSpeed;
     while (this.accumulator >= STEP && steps < MAX_STEPS) {
@@ -431,19 +454,20 @@ export class Engine {
     if (steps === MAX_STEPS) this.accumulator = 0;
 
     // A still scene (e.g. Your Image with no pointer) keeps its last frame.
-    const idle = !this.dirty && !this.fadeCanvas && !this.overlay && !!this.active.idle?.();
+    const idle = !this.dirty && !this.fadeCanvas && !this.overlay && this.shockwaves.length === 0 && !!this.active.idle?.();
     if (!idle) {
-      this.draw(ctx, octx);
+      this.draw(ctx, octx, elapsed);
       this.dirty = false;
     }
     this.adapt(performance.now() - t0);
   };
 
-  private draw(ctx: WorldContext, octx: WorldContext | null = null): void {
+  private draw(ctx: WorldContext, octx: WorldContext | null = null, elapsed: number = 0.016): void {
     if (!this.ctx || !this.active) return;
     this.grid.clear();
     this.active.render(ctx);
     if (this.overlay && octx) this.overlay.render(octx);
+    this.renderShockwaves(elapsed);
     this.rasterizer.draw(this.ctx, this.grid, this.width, this.height, this.font, themeLUT(this.config.colorTheme));
     if (this.fadeCanvas) {
       const t = (performance.now() - this.fadeStart) / Engine.FADE_MS;
@@ -471,17 +495,62 @@ export class Engine {
     }
   }
 
+  private renderShockwaves(dt: number): void {
+    if (this.shockwaves.length === 0) return;
+    const cw = this.grid.cellWidth;
+    const ch = this.grid.cellHeight;
+    const aspect = this.grid.aspect;
+    const rippleGlyphs = [code('·'), code('∘'), code('○'), code('·')];
+
+    for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+      const sw = this.shockwaves[i];
+      sw.age += dt;
+      if (sw.age >= sw.maxAge) {
+        this.shockwaves.splice(i, 1);
+        continue;
+      }
+
+      const progress = sw.age / sw.maxAge;
+      const radiusPx = sw.age * 320;
+      const radiusCols = radiusPx / cw;
+      const alpha = (1 - progress) * 0.7;
+      const glyph = rippleGlyphs[Math.min(rippleGlyphs.length - 1, Math.floor(progress * rippleGlyphs.length))];
+      const color = hex('#5eead4');
+
+      const centerC = sw.x / cw;
+      const centerR = sw.y / ch;
+      const minC = Math.max(0, Math.floor(centerC - radiusCols - 1));
+      const maxC = Math.min(this.grid.cols - 1, Math.ceil(centerC + radiusCols + 1));
+      const minR = Math.max(0, Math.floor(centerR - (radiusCols * aspect) - 1));
+      const maxR = Math.min(this.grid.rows - 1, Math.ceil(centerR + (radiusCols * aspect) + 1));
+
+      for (let r = minR; r <= maxR; r++) {
+        for (let c = minC; c <= maxC; c++) {
+          const dx = c - centerC;
+          const dy = (r - centerR) / aspect;
+          const dist = Math.hypot(dx, dy);
+          const diff = Math.abs(dist - radiusCols);
+          if (diff < 0.85) {
+            const cellAlpha = alpha * (1 - diff / 0.85);
+            this.grid.put(c, r, glyph, color, cellAlpha, Layer.FX);
+          }
+        }
+      }
+    }
+  }
+
   // ───────────────────────────── input ─────────────────────────────
 
   private trackPointer(elapsed: number): void {
     const inp = this.input;
     if (this.rawX < 0) {
-      inp.vx *= 0.8;
-      inp.vy *= 0.8;
+      const decay = Math.exp(-elapsed * 12);
+      inp.vx *= decay;
+      inp.vy *= decay;
       return;
     }
     if (inp.x >= 0 && elapsed > 0) {
-      const k = 0.35;
+      const k = 1 - Math.exp(-elapsed * 25);
       inp.vx = inp.vx * (1 - k) + ((this.rawX - inp.x) / elapsed) * k;
       inp.vy = inp.vy * (1 - k) + ((this.rawY - inp.y) / elapsed) * k;
     }
@@ -504,6 +573,8 @@ export class Engine {
     if (e.target !== this.canvas) return;
     this.input.down = true;
     this.input.clicks.push({ x: e.clientX, y: e.clientY });
+    this.shockwaves.push({ x: e.clientX, y: e.clientY, age: 0, maxAge: 0.42 });
+    this.dirty = true;
     if (this.isStill()) return;
   };
 
@@ -593,6 +664,7 @@ export class Engine {
       sky: DESIGNED_SKY,
       weather: 'clear',
       safe: null,
+      time: 0,
     };
     env.tune?.(tuning);
     env.init(wctx);

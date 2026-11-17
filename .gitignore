@@ -5,6 +5,7 @@ node_modules/
 dist/
 dist-ssr/
 release/
+scratch/
 
 # Environment variables
 .env

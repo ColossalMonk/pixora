@@ -58,10 +58,12 @@ export const ConversationalGreeting: React.FC = () => {
   if (!showGreeting) return null;
 
   return (
-    <div className="text-center select-none animate-fade-in mb-3">
-      <h1 className="text-2xl md:text-3xl font-light text-slate-100 tracking-tight drop-shadow-md">
-        {greeting}
-      </h1>
+    <div className="text-center select-none animate-fade-in mb-4">
+      <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-[#0c0e14]/75 hover:bg-[#0c0e14]/90 backdrop-blur-xl border border-white/10 shadow-lg transition-colors">
+        <h1 className="text-xs sm:text-sm font-medium text-slate-200 tracking-wide drop-shadow-sm">
+          {greeting}
+        </h1>
+      </div>
     </div>
   );
 };

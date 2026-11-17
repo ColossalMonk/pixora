@@ -1,143 +1,242 @@
 import React, { useEffect, useRef } from 'react';
-import { Engine } from '../../engine/core/Engine';
-import { sceneFor, useSettingsStore } from '../../store/useSettingsStore';
-import { useLiveStore } from '../../store/useLiveStore';
-import { Wallpaper } from '../../engine/environments/ImageWorld';
-import { onWallpaperChange, restoreWallpaper } from '../worlds/wallpaperActions';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { AnimalEngine } from '../../engine/ascii-animals/engine';
+import { ANIMAL_KEYS, AnimalKey } from '../../engine/ascii-animals/animals';
+import { CustomSlotId, WorldContext } from '../../types/environment';
+import { CustomImageScene } from '../../engine/environments/CustomImageScene';
+import { RenderGrid } from '../../engine/core/RenderGrid';
+import { Rasterizer } from '../../engine/core/Rasterizer';
 
 interface AsciiCanvasProps {
-  /** Element whose box the art should fade behind (clock + search + shortcuts). */
   focusRef?: React.RefObject<HTMLElement | null>;
 }
 
-export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef }) => {
+export const AsciiCanvas: React.FC<AsciiCanvasProps> = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const engineRef = useRef<Engine | null>(null);
+  const animalEngineRef = useRef<AnimalEngine | null>(null);
+  const customSceneRef = useRef<CustomImageScene | null>(null);
+  const customRafRef = useRef<number | null>(null);
+  const customGridRef = useRef<RenderGrid>(new RenderGrid());
+  const customRasterizerRef = useRef<Rasterizer>(new Rasterizer());
 
   const {
     isLoaded,
-    sceneKind,
-    activeWorld,
-    activeAnimal,
-    activeFlow,
-    layerAnimals,
+    activeScene,
     animalTweaks,
-    timeOfDay,
-    weatherLink,
-    wallpaper,
-    characterStyle,
-    colorTheme,
-    fontSize,
-    charDensity,
-    animationSpeed,
-    interactionIntensity,
-    reducedMotion,
-    performanceTier,
-    calmCenter,
+    customConfigs,
     dimBackground,
+    fontSize,
+    reducedMotion,
   } = useSettingsStore();
 
-  // Create the engine once, after saved settings are in (avoids a flash of the default world).
-  useEffect(() => {
-    if (!canvasRef.current || !isLoaded || engineRef.current) return;
-    const s = useSettingsStore.getState();
-    const engine = new Engine({
-      fontSize: s.fontSize,
-      charDensity: s.charDensity,
-      style: s.characterStyle,
-      colorTheme: s.colorTheme,
-      animationSpeed: s.animationSpeed,
-      interactionIntensity: s.interactionIntensity,
-      reducedMotion: s.reducedMotion,
-      performanceTier: s.performanceTier,
-      calmCenter: s.calmCenter,
-    });
-    engine.setTunings(s.animalTweaks);
-    const scene = sceneFor(s);
-    engine.setScene(scene.base, scene.overlay);
-    engine.attach(canvasRef.current);
-    engineRef.current = engine;
-  }, [isLoaded]);
+  const isAnimal = (ANIMAL_KEYS as readonly string[]).includes(activeScene);
 
-  useEffect(
-    () => () => {
-      engineRef.current?.detach();
-      engineRef.current = null;
-    },
-    []
-  );
-
+  // ── Handle Animal Scenes (Directly from DesignerStephen1/ascii-animals) ──
   useEffect(() => {
-    engineRef.current?.setTunings(animalTweaks);
-  }, [animalTweaks]);
+    if (!isLoaded || !canvasRef.current) return;
 
-  // Your Image: restore the saved picture once, and re-seed when it or its options change.
+    if (isAnimal) {
+      // Stop custom scene loop if running
+      if (customRafRef.current) {
+        cancelAnimationFrame(customRafRef.current);
+        customRafRef.current = null;
+      }
+      customSceneRef.current = null;
+
+      const animalKey = activeScene as AnimalKey;
+      if (!animalEngineRef.current) {
+        const engine = new AnimalEngine(canvasRef.current, {
+          animal: animalKey,
+          theme: 'dark',
+        });
+        animalEngineRef.current = engine;
+      } else {
+        animalEngineRef.current.setAnimal(animalKey);
+      }
+
+      // Apply live animal tweaks
+      const tweaks = animalTweaks[animalKey] || {};
+      for (const [k, v] of Object.entries(tweaks)) {
+        animalEngineRef.current.set(k, v);
+      }
+    } else {
+      // Custom image slot is active -> destroy animal engine
+      if (animalEngineRef.current) {
+        animalEngineRef.current.destroy();
+        animalEngineRef.current = null;
+      }
+
+      // Start Custom Image Scene
+      const slotId = activeScene as CustomSlotId;
+      const scene = new CustomImageScene(slotId);
+      customSceneRef.current = scene;
+
+      const canvas = canvasRef.current;
+      const ctx2d = canvas.getContext('2d');
+      if (!ctx2d) return;
+
+      let lastTime = performance.now();
+      const grid = customGridRef.current;
+      const rasterizer = customRasterizerRef.current;
+
+      const inputState = {
+        x: -1,
+        y: -1,
+        vx: 0,
+        vy: 0,
+        active: false,
+        down: false,
+        clicks: [] as { x: number; y: number }[],
+        intensity: 1,
+      };
+
+      const onPointerMove = (e: PointerEvent) => {
+        const rect = canvas.getBoundingClientRect();
+        const nx = e.clientX - rect.left;
+        const ny = e.clientY - rect.top;
+        if (inputState.x >= 0) {
+          inputState.vx = nx - inputState.x;
+          inputState.vy = ny - inputState.y;
+        }
+        inputState.x = nx;
+        inputState.y = ny;
+        inputState.active = true;
+      };
+
+      const onPointerLeave = () => {
+        inputState.active = false;
+        inputState.x = -1;
+        inputState.y = -1;
+      };
+
+      const onPointerDown = (e: PointerEvent) => {
+        const rect = canvas.getBoundingClientRect();
+        inputState.clicks.push({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      };
+
+      window.addEventListener('pointermove', onPointerMove, { passive: true });
+      canvas.addEventListener('pointerleave', onPointerLeave);
+      canvas.addEventListener('pointerdown', onPointerDown);
+
+      const resizeCustom = () => {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx2d.scale(dpr, dpr);
+
+        const fontPx = fontSize || 14;
+        ctx2d.font = `600 ${fontPx}px "Geist Mono", monospace`;
+        const cw = ctx2d.measureText('M').width || fontPx * 0.6;
+        const ch = Math.round(fontPx * 1.18);
+        grid.resize(Math.ceil(rect.width / cw), Math.ceil(rect.height / ch), cw, ch);
+
+        const wctx: WorldContext = {
+          width: rect.width,
+          height: rect.height,
+          grid,
+          input: inputState,
+          style: 'tiles',
+          auto: true,
+          habitat: { top: 0, bottom: rect.height, left: 0, right: rect.width },
+          time: 0,
+          quality: 1,
+          bg: 0x08080c,
+        };
+        scene.init(wctx);
+      };
+
+      resizeCustom();
+
+      const loop = (now: number) => {
+        const dt = Math.min(0.1, (now - lastTime) / 1000);
+        lastTime = now;
+
+        const rect = canvas.getBoundingClientRect();
+        const wctx: WorldContext = {
+          width: rect.width,
+          height: rect.height,
+          grid,
+          input: inputState,
+          style: 'tiles',
+          auto: true,
+          habitat: { top: 0, bottom: rect.height, left: 0, right: rect.width },
+          time: now / 1000,
+          quality: 1,
+          bg: 0x08080c,
+        };
+
+        scene.update(reducedMotion ? 0 : dt, wctx);
+        inputState.clicks = [];
+
+        grid.clear();
+        scene.render(wctx);
+
+        rasterizer.prepareBackdrop(rect.width, rect.height, window.devicePixelRatio || 1, scene.backdrop);
+        rasterizer.draw(ctx2d, grid, rect.width, rect.height, `600 ${fontSize || 14}px "Geist Mono", monospace`, null, true);
+
+        customRafRef.current = requestAnimationFrame(loop);
+      };
+
+      customRafRef.current = requestAnimationFrame(loop);
+
+      return () => {
+        if (customRafRef.current) {
+          cancelAnimationFrame(customRafRef.current);
+          customRafRef.current = null;
+        }
+        scene.destroy();
+        window.removeEventListener('pointermove', onPointerMove);
+        canvas.removeEventListener('pointerleave', onPointerLeave);
+        canvas.removeEventListener('pointerdown', onPointerDown);
+      };
+    }
+  }, [isLoaded, activeScene, isAnimal, fontSize, reducedMotion]);
+
+  // Sync animal tweaks live
   useEffect(() => {
-    if (!isLoaded) return;
-    const off = onWallpaperChange(() => engineRef.current?.refreshScene());
-    restoreWallpaper();
+    if (isAnimal && animalEngineRef.current) {
+      const tweaks = animalTweaks[activeScene] || {};
+      for (const [k, v] of Object.entries(tweaks)) {
+        animalEngineRef.current.set(k, v);
+      }
+    }
+  }, [animalTweaks, activeScene, isAnimal]);
+
+  // Sync custom configs live
+  useEffect(() => {
+    if (!isAnimal && customSceneRef.current) {
+      customSceneRef.current.tune(undefined);
+    }
+  }, [customConfigs, isAnimal]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
-      off();
+      if (animalEngineRef.current) {
+        animalEngineRef.current.destroy();
+        animalEngineRef.current = null;
+      }
+      if (customRafRef.current) {
+        cancelAnimationFrame(customRafRef.current);
+        customRafRef.current = null;
+      }
     };
-  }, [isLoaded]);
-  useEffect(() => {
-    Wallpaper.configure(wallpaper);
-    if (sceneKind === 'world' && activeWorld === 'your-image') engineRef.current?.refreshScene();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wallpaper]);
-
-  const weather = useLiveStore((s) => s.weather);
-  useEffect(() => {
-    engineRef.current?.setTimeOfDay(timeOfDay);
-  }, [timeOfDay, isLoaded]);
-  useEffect(() => {
-    const parse = (s?: string) => (s ? new Date(s) : null);
-    engineRef.current?.setWeather(weatherLink ? weather?.kind ?? 'clear' : 'clear', parse(weather?.sunrise), parse(weather?.sunset));
-  }, [weather, weatherLink, isLoaded]);
-
-  useEffect(() => {
-    const scene = sceneFor({ sceneKind, activeWorld, activeAnimal, activeFlow, layerAnimals });
-    engineRef.current?.setScene(scene.base, scene.overlay);
-  }, [sceneKind, activeWorld, activeAnimal, activeFlow, layerAnimals]);
-
-  useEffect(() => {
-    engineRef.current?.updateConfig({
-      fontSize,
-      charDensity,
-      style: characterStyle,
-      colorTheme,
-      animationSpeed,
-      interactionIntensity,
-      reducedMotion,
-      performanceTier,
-      calmCenter,
-    });
-  }, [characterStyle, colorTheme, fontSize, charDensity, animationSpeed, interactionIntensity, reducedMotion, performanceTier, calmCenter]);
-
-  // Track the central UI box so the engine can keep the art calm behind it.
-  useEffect(() => {
-    const el = focusRef?.current;
-    if (!el || !isLoaded) return;
-    const push = () => {
-      const r = el.getBoundingClientRect();
-      engineRef.current?.setFocusRect(r.width > 0 ? { x: r.x, y: r.y, w: r.width, h: r.height } : null);
-    };
-    const ro = new ResizeObserver(push);
-    ro.observe(el);
-    window.addEventListener('resize', push);
-    const id = window.setTimeout(push, 50);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', push);
-      window.clearTimeout(id);
-    };
-  }, [focusRef, isLoaded]);
+  }, []);
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
-      <canvas ref={canvasRef} className="block w-full h-full cursor-crosshair touch-none" aria-hidden="true" />
+    <div className="absolute inset-0 overflow-hidden bg-[#06070c]">
+      <canvas
+        ref={canvasRef}
+        aria-hidden="true"
+        className="block w-full h-full font-mono cursor-default"
+      />
+
+      {/* Dim Background Overlay */}
       <div
-        className={`absolute inset-0 bg-black pointer-events-none transition-opacity duration-500 ${dimBackground ? 'opacity-40' : 'opacity-0'}`}
+        className={`absolute inset-0 bg-black pointer-events-none transition-opacity duration-500 ${
+          dimBackground ? 'opacity-40' : 'opacity-0'
+        }`}
       />
     </div>
   );

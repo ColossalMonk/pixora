@@ -65,7 +65,7 @@ export const CentralSearchBar: React.FC = () => {
     <div className="relative z-30 w-full max-w-xl mx-auto px-4">
       <form
         onSubmit={handleSearch}
-        className="relative flex items-center glass-panel rounded-2xl px-3 py-2.5 transition-all duration-300 focus-within:ring-2 focus-within:ring-teal-400/40 focus-within:border-teal-400/50 shadow-2xl"
+        className="relative flex items-center bg-[#0c0e14]/85 hover:bg-[#0c0e14]/90 backdrop-blur-2xl rounded-2xl px-3 py-2.5 transition-all duration-300 border border-white/15 focus-within:border-teal-400/50 focus-within:ring-2 focus-within:ring-teal-400/30 shadow-[0_12px_40px_rgba(0,0,0,0.65)]"
       >
         {/* Search Engine Selector Pill */}
         <div className="relative" ref={dropdownRef}>
@@ -124,7 +124,7 @@ export const CentralSearchBar: React.FC = () => {
           onChange={(e) => setQuery(e.target.value)}
           placeholder={`Search ${currentEngine.name}, type a URL, or !d / !b …`}
           aria-label="Search or enter address"
-          className="flex-1 bg-transparent border-none outline-none px-3 text-sm md:text-base text-slate-100 placeholder:text-slate-500 font-normal"
+          className="flex-1 bg-transparent border-none outline-none px-3 text-sm md:text-base text-white placeholder:text-slate-400 font-normal"
           autoFocus
         />
 

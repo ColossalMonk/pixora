@@ -12,13 +12,18 @@ import { CustomSlotId } from './types/environment';
 
 export const App: React.FC = () => {
   const { loadSettings, activeScene, setActiveScene } = useSettingsStore();
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const [isZenMode, setIsZenMode] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(() => searchParams?.get('drawer') === 'true');
   const [dropToast, setDropToast] = useState<string | null>(null);
   const focusRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     loadSettings();
+    const queryScene = searchParams?.get('scene');
+    if (queryScene) {
+      setActiveScene(queryScene as any);
+    }
   }, [loadSettings]);
 
   // Global hotkeys: 'Z' for Zen Mode, 'S' for Settings, 'Esc' to exit
@@ -45,13 +50,15 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKey);
   }, [isZenMode, isSettingsOpen]);
 
-  // Drop an image anywhere on the page to asciify with glowing effect
+  // Drop an image or video anywhere on the page to render with glowing effect
   useEffect(() => {
     const over = (e: DragEvent) => {
       if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
     };
     const drop = async (e: DragEvent) => {
-      const file = Array.from(e.dataTransfer?.files ?? []).find((x) => x.type.startsWith('image/'));
+      const file = Array.from(e.dataTransfer?.files ?? []).find((x) =>
+        x.type.startsWith('image/') || x.type.startsWith('video/')
+      );
       if (!file) return;
       e.preventDefault();
 
@@ -62,7 +69,7 @@ export const App: React.FC = () => {
       await ImageStore.saveImage(targetSlot, file);
       setActiveScene(targetSlot);
 
-      setDropToast(`Applied to ${targetSlot.replace('-', ' ').toUpperCase()} with Asciify Glow`);
+      setDropToast(`Applied to ${targetSlot.replace('-', ' ').toUpperCase()} with Phosphor Glow`);
       setTimeout(() => setDropToast(null), 3500);
     };
 

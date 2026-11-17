@@ -35,10 +35,10 @@
 
 - [Overview](#overview)
 - [Key Features](#key-features)
-  - [1. Authentic Procedural Wildlife (7 Species)](#1-authentic-procedural-wildlife-7-species)
-  - [2. Real-Time Video & Image ASCII Engine (Asciify Engine)](#2-real-time-video--image-ascii-engine-asciify-engine)
+  - [1. Authentic Procedural Wildlife](#1-authentic-procedural-wildlife)
+  - [2. Real-Time Video & Image ASCII Engine](#2-real-time-video--image-ascii-engine)
   - [3. Interactive Fluid Gas Flow & Traveling Ripples](#3-interactive-fluid-gas-flow--traveling-ripples)
-  - [4. Complete Simulation Tweaks Suite](#4-complete-simulation-tweaks-suite)
+  - [4. Complete Simulation & Media Tweaks Suite](#4-complete-simulation--media-tweaks-suite)
   - [5. Distraction-Free Productivity Overlay](#5-distraction-free-productivity-overlay)
 - [Screenshots & Visuals](#screenshots--visuals)
 - [Quick Start & Installation](#quick-start--installation)
@@ -56,9 +56,9 @@
 
 **Pixora** completely replaces the default Chrome/Brave/Edge New Tab with a lightweight, high-performance canvas engine running at a smooth 60 FPS. 
 
-Instead of static photos or cluttered promotional widgets, Pixora offers **10 live scenes**:
-- **7 Wildlife Simulations** ported directly from [DesignerStephen1/ascii-animals](https://github.com/DesignerStephen1/ascii-animals).
-- **3 Custom ASCII Media Slots** equipped with an in-browser ASCII video & image engine inspired by [asciify-engine](https://github.com/ayangabryl/asciify-engine).
+Instead of static photos or cluttered promotional widgets, Pixora offers living procedural habitats and custom media canvases:
+- **Wildlife Simulations** ported directly from [DesignerStephen1/ascii-animals](https://github.com/DesignerStephen1/ascii-animals).
+- **Custom ASCII Media Slots** equipped with an in-browser ASCII video & image engine.
 
 Every scene can be tuned in real-time, personalized with custom names, and switched instantly from a top-edge hover pill.
 
@@ -66,7 +66,7 @@ Every scene can be tuned in real-time, personalized with custom names, and switc
 
 ## Key Features
 
-### 1. Authentic Procedural Wildlife (7 Species)
+### 1. Authentic Procedural Wildlife
 
 All animal behaviors, flocking algorithms, and vector shaders are ported directly without compromise:
 
@@ -82,7 +82,7 @@ All animal behaviors, flocking algorithms, and vector shaders are ported directl
 
 ---
 
-### 2. Real-Time Video & Image ASCII Engine (Asciify Engine)
+### 2. Real-Time Video & Image ASCII Engine
 
 Upload photos or looping videos directly to create custom ASCII art backgrounds:
 
@@ -112,7 +112,7 @@ Pixora features a real-time 2D Navier-Stokes fluid physics simulation:
 
 ---
 
-### 4. Complete Simulation Tweaks Suite
+### 4. Complete Simulation & Media Tweaks Suite
 
 Click the gear icon on the top right (or press `S`) to slide out the Tweaks & Settings drawer:
 
@@ -132,6 +132,16 @@ Click the gear icon on the top right (or press `S`) to slide out the Tweaks & Se
    - Trail duration and Trail Fade speed
    - Background Grid line visibility (`0x – 4x`)
    - ASCII Detail / Resolution scaling
+4. **Custom Media Controls**:
+   - Color Modes (True Color, Neon, Amber, Matrix, Monochrome)
+   - Phosphor Backlight Glow (`0% – 100%`)
+   - Brightness & Contrast correction
+   - Fluid Gas Flow, Ripple, and Still pointer modes
+   - Gas expansion plume spread, flow speed, and decay lingering
+5. **Instant Reset to Default**:
+   - One-click **Reset** button on simulation tweaks to restore default creature physics.
+   - One-click **Reset** button on custom media to restore baseline visual fidelity while keeping slot names intact.
+   - Comprehensive **Reset All to Default** button in Settings for a full factory refresh.
 
 ---
 
@@ -151,13 +161,13 @@ Click the gear icon on the top right (or press `S`) to slide out the Tweaks & Se
 
 <div align="center">
 
-### Pixora in Action (Ambient ASCII Cat Wallpaper)
-<img src="./docs/screenshots/pixora-preview.jpg" alt="Pixora Screenshot" width="95%" style="border-radius: 8px;" />
+### Pixora in Action (Interactive Wildlife Sanctuary)
+<img src="./docs/screenshots/pixora-preview.jpg" alt="Pixora Preview" width="95%" style="border-radius: 8px;" />
 
 <br /><br />
 
-### Asciify Engine Character Shading & Matrix Detail
-<img src="./docs/screenshots/asciify-style.jpg" alt="Asciify Shading Screenshot" width="95%" style="border-radius: 8px;" />
+### Live Simulation & Media Tweaks Suite
+<img src="./docs/screenshots/pixora-tweaks.jpg" alt="Pixora Tweaks Drawer" width="95%" style="border-radius: 8px;" />
 
 </div>
 
@@ -234,7 +244,6 @@ Once built, load the `dist/` directory as an unpacked extension in your browser.
 ## Credits & Acknowledgments
 
 - **[ascii-animals](https://github.com/DesignerStephen1/ascii-animals)** by Stephen — Authentic procedural wildlife flocking, mathematical creature models, and animal pen shaders.
-- **[asciify-engine](https://github.com/ayangabryl/asciify-engine)** by Ayangabryl — Real-time character luminance mapping, phosphor backlight glow, and video ASCII inspiration.
 
 ---
 

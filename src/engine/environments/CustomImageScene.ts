@@ -9,7 +9,7 @@ import { ImageStore } from '../../services/imageStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { CustomImageConfig, DEFAULT_CUSTOM_CONFIG } from '../../types/settings';
 
-// Asciify Classic ASCII ramp
+// Classic ASCII ramp
 const RAMP = Array.from(' .:-=+*#%@').map(code);
 const TILE_GLYPHS = Array.from(' ·:;+=').map(code);
 const BRAILLE_BIT = [
@@ -413,7 +413,7 @@ export class CustomImageScene extends BaseEnvironment {
         const iDom = (fy < 0.5 ? (fx < 0.5 ? i00 : i10) : (fx < 0.5 ? i01 : i11));
         let col = this.color[iDom];
 
-        // Asciify Dynamic Cursor Lantern (smooth radial presence)
+        // Dynamic Cursor Lantern (smooth radial presence)
         let cursorGlow = 0;
         if (this.px >= 0) {
           const dCursor = Math.hypot(c - this.px, (r - this.py) / grid.aspect);
@@ -430,7 +430,7 @@ export class CustomImageScene extends BaseEnvironment {
 
         const effectiveLum = Math.max(0, Math.min(1, rawLum + surgeGlow * 0.65 + cursorGlow * 0.35));
 
-        // Asciify Backlight Phosphor Glow Calculation
+        // Backlight Phosphor Glow Calculation
         const bgGlowAlpha = Math.min(
           0.88,
           (effectiveLum > 0.04 ? (effectiveLum * 0.40 + 0.08) * glowVal : 0) + surgeGlow * 0.5 + cursorGlow
@@ -499,7 +499,7 @@ export class CustomImageScene extends BaseEnvironment {
 
     const lines = [
       `CUSTOM ASCII ART • SLOT ${slotNumber}`,
-      'Drop any picture or video here to asciify with gas-flow wake & backlight glow',
+      'Drop any picture or video here to render with gas-flow wake & backlight glow',
       'or click the circular icon on the right to upload',
     ];
     const base = Math.floor(this.rows * 0.78);

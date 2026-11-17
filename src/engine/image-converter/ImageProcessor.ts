@@ -1,7 +1,7 @@
 /**
  * Image → ASCII conversion.
  *
- * Pipeline (after asciify-engine's approach):
+ * Image processing pipeline:
  *  1. Decode once; downscale with the browser's high-quality resampler to the
  *     sample grid (cells, or 2×4 dots per cell for Braille, 1×2 for Blocks).
  *  2. Auto-levels: stretch luminance between its 2nd and 98th percentiles,

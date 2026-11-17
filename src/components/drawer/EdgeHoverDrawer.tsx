@@ -52,9 +52,11 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
     setActiveScene,
     customConfigs,
     setCustomConfig,
+    resetCustomConfig,
     animalTweaks,
     setAnimalTweak,
     resetAnimalTweaks,
+    resetAllSettings,
     userName,
     setUserName,
     searchEngine,
@@ -226,7 +228,7 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>{isCustomActive ? 'Asciify Glow' : 'Tweaks'}</span>
+            <span>{isCustomActive ? 'Media Glow' : 'Tweaks'}</span>
           </button>
           <button
             type="button"
@@ -238,7 +240,7 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>Scenes (10)</span>
+            <span>Scenes</span>
           </button>
           <button
             type="button"
@@ -256,11 +258,11 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
 
         {/* Drawer Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6 text-sm custom-scrollbar">
-          {/* ══════════════ TAB: TWEAKS & ASCIIFY GLOW ══════════════ */}
+          {/* ══════════════ TAB: TWEAKS & GLOW ══════════════ */}
           {activeTab === 'tweaks' && (
             <div className="space-y-6">
               {isCustomActive ? (
-                /* Case 1: Custom Media Asciify Glowing Controls */
+                /* Case 1: Custom Media Controls */
                 <div className="space-y-5">
                   <div className="flex items-center justify-between pb-2 border-b border-white/10">
                     <div>
@@ -280,17 +282,28 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
                         )}
                       </div>
                       <p className="text-[11px] text-slate-400">
-                        Asciify engine shader with dynamic fluid gas flow
+                        Phosphor glow shader with dynamic fluid gas flow
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => triggerUpload(activeCustomSlot)}
-                      className="px-2.5 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 text-xs font-medium flex items-center gap-1.5 transition-colors border border-sky-500/30 cursor-pointer"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Upload Media</span>
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => resetCustomConfig(activeCustomSlot)}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-colors border border-white/5 cursor-pointer"
+                        title="Reset tweaks to default"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Reset</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => triggerUpload(activeCustomSlot)}
+                        className="px-2.5 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 text-xs font-medium flex items-center gap-1.5 transition-colors border border-sky-500/30 cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Slot Custom Name */}
@@ -347,10 +360,10 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
                     </div>
                   </div>
 
-                  {/* Asciify Glowing Radiance Slider */}
+                  {/* Glowing Radiance Slider */}
                   <div>
                     <div className="flex items-center justify-between text-xs mb-1.5">
-                      <span className="text-slate-300 font-medium">Asciify Backlight Glow</span>
+                      <span className="text-slate-300 font-medium">Backlight Glow</span>
                       <span className="text-sky-400 font-mono">
                         {Math.round(currentCustomConfig.glow * 100)}%
                       </span>
@@ -522,10 +535,11 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
                     <button
                       type="button"
                       onClick={() => resetAnimalTweaks(activeScene)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                      title="Reset to default settings"
+                      className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-colors border border-white/5 cursor-pointer"
+                      title="Reset simulation tweaks to default"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Reset</span>
                     </button>
                   </div>
 
@@ -697,13 +711,13 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
             </div>
           )}
 
-          {/* ══════════════ TAB: SCENES (10 TOTAL) ══════════════ */}
+          {/* ══════════════ TAB: SCENES ══════════════ */}
           {activeTab === 'scenes' && (
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono">
-                    Wildlife Species (7)
+                    Wildlife Species
                   </h3>
                 </div>
 
@@ -750,9 +764,8 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono">
-                    Custom Media & Videos (3)
+                    Custom Art & Videos
                   </h3>
-                  <span className="text-[11px] text-sky-400 font-mono">Asciify Engine</span>
                 </div>
 
                 <div className="space-y-2.5">
@@ -1077,6 +1090,22 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
                     className="w-full accent-teal-400 bg-white/10 h-1.5 rounded-lg cursor-pointer"
                   />
                 </div>
+              </div>
+
+              {/* Reset to Factory Defaults */}
+              <div className="pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Reset all settings, scenes, and media tweaks to factory defaults?')) {
+                      resetAllSettings();
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 text-xs font-medium flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Reset All to Default</span>
+                </button>
               </div>
             </div>
           )}

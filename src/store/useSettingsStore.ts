@@ -11,7 +11,7 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   { id: '2', title: 'YouTube', url: 'https://youtube.com' },
   { id: '3', title: 'Reddit', url: 'https://reddit.com' },
   { id: '4', title: 'X', url: 'https://x.com' },
-  { id: '5', title: 'Asciify', url: 'https://asciify.org' },
+  { id: '5', title: 'Wikipedia', url: 'https://wikipedia.org' },
 ];
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -59,10 +59,12 @@ interface SettingsStore extends UserSettings {
 
   // Custom Image Configs (for the 3 slots)
   setCustomConfig: (slot: CustomSlotId, partial: Partial<CustomImageConfig>) => void;
+  resetCustomConfig: (slot: CustomSlotId) => void;
 
   // Animal Tweaks
   setAnimalTweak: (animal: string, key: string, value: number | boolean) => void;
   resetAnimalTweaks: (animal: string) => void;
+  resetAllSettings: () => void;
 
   // Productivity
   setUserName: (name: string) => void;
@@ -164,6 +166,15 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     get().updateSettings({ customConfigs: updated });
   },
 
+  resetCustomConfig: (slot) => {
+    const current = get().customConfigs[slot] || DEFAULT_CUSTOM_CONFIG;
+    const updated = {
+      ...get().customConfigs,
+      [slot]: { ...DEFAULT_CUSTOM_CONFIG, name: current.name },
+    };
+    get().updateSettings({ customConfigs: updated });
+  },
+
   setAnimalTweak: (animal, key, value) => {
     const tweaks = { ...get().animalTweaks };
     tweaks[animal] = { ...(tweaks[animal] || {}), [key]: value };
@@ -174,6 +185,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     const tweaks = { ...get().animalTweaks };
     delete tweaks[animal];
     get().updateSettings({ animalTweaks: tweaks });
+  },
+
+  resetAllSettings: () => {
+    get().updateSettings({ ...DEFAULT_SETTINGS });
   },
 
   setUserName: (userName) => get().updateSettings({ userName }),

@@ -8,7 +8,8 @@ import { TopBar } from './components/navigation/TopBar';
 import { EdgeHoverDrawer } from './components/drawer/EdgeHoverDrawer';
 import { useSettingsStore } from './store/useSettingsStore';
 import { ImageStore } from './services/imageStore';
-import { CustomSlotId } from './types/environment';
+import { CustomSlotId, SceneId } from './types/environment';
+import { CATALOG } from './data/catalog';
 
 export const App: React.FC = () => {
   const { loadSettings, activeScene, setActiveScene } = useSettingsStore();
@@ -19,17 +20,37 @@ export const App: React.FC = () => {
   const focusRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    loadSettings();
+    // Apply ?scene= only after saved settings are in, and only if it names a real scene;
+    // switching earlier would save default settings over the user's own.
     const queryScene = searchParams?.get('scene');
-    if (queryScene) {
-      setActiveScene(queryScene as any);
-    }
+    loadSettings().then(() => {
+      if (queryScene && CATALOG.some((s) => s.id === queryScene)) {
+        setActiveScene(queryScene as SceneId);
+      }
+    });
   }, [loadSettings]);
 
   // Global hotkeys: 'Z' for Zen Mode, 'S' for Settings, 'Esc' to exit
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName || '')) return;
+      const el = document.activeElement as HTMLElement | null;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(el?.tagName || '') || el?.isContentEditable) return;
+      // Leave browser shortcuts (Ctrl+S, Cmd+Z, Alt+←…) alone.
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      // Scenes: ← → (or [ ]) step through them, 1–9 and 0 jump straight to one.
+      const sceneIndex = CATALOG.findIndex((s) => s.id === useSettingsStore.getState().activeScene);
+      const go = (i: number) => {
+        e.preventDefault();
+        setActiveScene(CATALOG[(i + CATALOG.length) % CATALOG.length].id as SceneId);
+      };
+      if (e.key === 'ArrowRight' || e.key === ']') return go(sceneIndex + 1);
+      if (e.key === 'ArrowLeft' || e.key === '[') return go(sceneIndex - 1);
+      if (/^[0-9]$/.test(e.key)) {
+        const i = e.key === '0' ? 9 : Number(e.key) - 1;
+        if (i < CATALOG.length) return go(i);
+      }
+
       if (e.key === 'z' || e.key === 'Z') {
         e.preventDefault();
         setIsZenMode((prev) => !prev);
@@ -62,9 +83,19 @@ export const App: React.FC = () => {
       if (!file) return;
       e.preventDefault();
 
-      const targetSlot: CustomSlotId = activeScene.startsWith('custom-')
-        ? (activeScene as CustomSlotId)
-        : 'custom-1';
+      // Viewing a slot: replace it. Otherwise use the first empty slot, so a drop
+      // never silently overwrites a picture you already set up.
+      let targetSlot: CustomSlotId = 'custom-1';
+      if (activeScene.startsWith('custom-')) {
+        targetSlot = activeScene as CustomSlotId;
+      } else {
+        for (const slot of ['custom-1', 'custom-2', 'custom-3'] as CustomSlotId[]) {
+          if (!(await ImageStore.loadImage(slot))) {
+            targetSlot = slot;
+            break;
+          }
+        }
+      }
 
       await ImageStore.saveImage(targetSlot, file);
       setActiveScene(targetSlot);

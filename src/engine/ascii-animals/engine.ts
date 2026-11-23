@@ -28,6 +28,11 @@ export class AnimalEngine {
   private resizeObserver: ResizeObserver;
   private intersectionObserver: IntersectionObserver;
   private disposed = false;
+  /** Pixora: the in-app "Reduced motion" setting, on top of the OS preference. */
+  private forceStill = false;
+  private get still() {
+    return this.forceStill || this.reducedMotion.matches;
+  }
 
   /** count pins the population; tuning overrides any of the animal's defaults. */
   constructor(
@@ -63,7 +68,7 @@ export class AnimalEngine {
     this.resize();
     // Canvas text can't trigger a webfont load; once the mono face is in, redraw.
     document.fonts?.load(`600 16px ${getComputedStyle(canvas).fontFamily}`).then(() => {
-      if (!this.disposed && this.reducedMotion.matches) this.drawStill();
+      if (!this.disposed && this.still) this.drawStill();
     });
     this.schedule();
   }
@@ -90,18 +95,25 @@ export class AnimalEngine {
     this.tuning[key] = value;
     if (key === "detail") this.resize();
     else if (key === "hueShift" || key === "grid") this.renderer.restyle();
-    if (this.reducedMotion.matches) this.drawStill();
+    if (this.still) this.drawStill();
   }
 
   /** Pixora: keep the animals faded behind this box (CSS pixels, canvas-relative). */
   setCalm(rect: { x: number; y: number; w: number; h: number } | null) {
     this.renderer.setCalm(rect);
-    if (this.reducedMotion.matches) this.drawStill();
+    if (this.still) this.drawStill();
+  }
+
+  /** Pixora: honour the in-app Reduced motion toggle as well as the OS setting. */
+  setReducedMotion(on: boolean) {
+    if (on === this.forceStill) return;
+    this.forceStill = on;
+    this.onMotionPreference();
   }
 
   setTheme(theme: Theme) {
     this.renderer.setTheme(theme);
-    if (this.reducedMotion.matches) this.drawStill();
+    if (this.still) this.drawStill();
   }
 
   private resize() {
@@ -110,12 +122,12 @@ export class AnimalEngine {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.renderer.resize(rect.width, rect.height, dpr);
     this.flock.resize(rect.width, rect.height);
-    if (this.reducedMotion.matches) this.drawStill();
+    if (this.still) this.drawStill();
   }
 
   private schedule() {
     cancelAnimationFrame(this.raf);
-    if (this.disposed || !this.visible || this.reducedMotion.matches) return;
+    if (this.disposed || !this.visible || this.still) return;
     this.last = performance.now();
     this.raf = requestAnimationFrame(this.frame);
   }
@@ -144,7 +156,7 @@ export class AnimalEngine {
   }
 
   private onMotionPreference = () => {
-    if (this.reducedMotion.matches) {
+    if (this.still) {
       cancelAnimationFrame(this.raf);
       this.drawStill();
     } else {
@@ -154,7 +166,7 @@ export class AnimalEngine {
 
   private onPointerDown = (e: PointerEvent) => {
     // Only clicks that land on the canvas itself, not on UI floating above it.
-    if (this.reducedMotion.matches || e.target !== this.canvas) return;
+    if (this.still || e.target !== this.canvas) return;
     const rect = this.canvas.getBoundingClientRect();
     this.flock.startle(e.clientX - rect.left, e.clientY - rect.top);
   };

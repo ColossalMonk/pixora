@@ -48,6 +48,8 @@ export class CustomImageScene extends BaseEnvironment {
 
   private configVersion = 0;
   private builtVersion = -1;
+  private wantPlay = true;
+  private lastVideoTime = -1;
 
   private lum = new Float32Array(0);
   private color = new Uint32Array(0);
@@ -127,13 +129,13 @@ export class CustomImageScene extends BaseEnvironment {
         vid.muted = true;
         vid.loop = true;
         vid.playsInline = true;
-        vid.autoplay = true;
+        vid.autoplay = this.wantPlay;
         vid.crossOrigin = 'anonymous';
         vid.src = url;
         vid.onloadeddata = () => {
           this.configVersion++;
         };
-        vid.play().catch(() => {});
+        if (this.wantPlay) vid.play().catch(() => {});
         this.video = vid;
       } else {
         const url = URL.createObjectURL(blob);
@@ -239,8 +241,11 @@ export class CustomImageScene extends BaseEnvironment {
 
   public update(dt: number, ctx: WorldContext): void {
     this.time += dt;
-    const isVideoPlaying = this.isVideo && this.video && this.video.readyState >= 2 && !this.video.paused;
-    if (isVideoPlaying || this.builtVersion !== this.configVersion) {
+    const vid = this.isVideo ? this.video : null;
+    // Only re-sample a video when it has moved on to a new frame.
+    const newVideoFrame = !!vid && vid.readyState >= 2 && vid.currentTime !== this.lastVideoTime;
+    if (newVideoFrame || this.builtVersion !== this.configVersion) {
+      if (vid) this.lastVideoTime = vid.currentTime;
       this.build(ctx);
     }
     const { input, grid } = ctx;
@@ -509,6 +514,21 @@ export class CustomImageScene extends BaseEnvironment {
       const alpha = k === 0 ? 0.95 : 0.75;
       grid.text(c0, base + k * 2, s, color, alpha, Layer.FX);
     });
+  }
+
+  /** True when a frame would look the same as the last one (apart from the slow ambient drift). */
+  public isIdle(): boolean {
+    if (this.builtVersion !== this.configVersion) return false;
+    if (this.isVideo && this.video && !this.video.paused) return false;
+    return !this.fluid.active && this.wavePulses.length === 0;
+  }
+
+  /** Play or pause a video slot (hidden tab, reduced motion). */
+  public setPlaying(on: boolean): void {
+    this.wantPlay = on;
+    if (!this.video) return;
+    if (on) this.video.play().catch(() => {});
+    else this.video.pause();
   }
 
   public tune(_values?: Record<string, number | boolean>): void {

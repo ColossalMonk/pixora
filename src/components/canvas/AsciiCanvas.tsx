@@ -56,6 +56,8 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
         animalEngineRef.current.setAnimal(animalKey);
       }
 
+      animalEngineRef.current.setReducedMotion(reducedMotion);
+
       // Apply live animal tweaks
       const tweaks = animalTweaks[animalKey] || {};
       for (const [k, v] of Object.entries(tweaks)) {
@@ -78,8 +80,15 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
       if (!ctx2d) return;
 
       let lastTime = performance.now();
+      let lastDraw = 0;
+      let lastMove = 0;
+      let dirty = true;
+      let initialised = false;
       const grid = customGridRef.current;
       const rasterizer = customRasterizerRef.current;
+      const fontPx = fontSize || 14;
+      // JetBrains Mono is bundled (600 weight included), so cells are the same on every machine.
+      const font = `600 ${fontPx}px "JetBrains Mono", ui-monospace, monospace`;
 
       const inputState = {
         x: -1,
@@ -103,12 +112,14 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
         inputState.x = nx;
         inputState.y = ny;
         inputState.active = true;
+        lastMove = performance.now();
       };
 
       const onPointerLeave = () => {
         inputState.active = false;
         inputState.x = -1;
         inputState.y = -1;
+        dirty = true;
       };
 
       const onPointerDown = (e: PointerEvent) => {
@@ -122,62 +133,79 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
 
       const resizeCustom = () => {
         const rect = canvas.getBoundingClientRect();
+        if (rect.width < 1 || rect.height < 1) return;
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
-        ctx2d.scale(dpr, dpr);
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+        ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        const fontPx = fontSize || 14;
-        ctx2d.font = `600 ${fontPx}px "Geist Mono", monospace`;
+        ctx2d.font = font;
         const cw = ctx2d.measureText('M').width || fontPx * 0.6;
         const ch = Math.round(fontPx * 1.18);
         grid.resize(Math.ceil(rect.width / cw), Math.ceil(rect.height / ch), cw, ch);
 
-        const wctx: WorldContext = {
-          width: rect.width,
-          height: rect.height,
-          grid,
-          input: inputState,
-          style: 'tiles',
-          auto: true,
-          habitat: { top: 0, bottom: rect.height, left: 0, right: rect.width },
-          time: 0,
-          quality: 1,
-          bg: 0x08080c,
-        };
-        scene.init(wctx);
+        const wctx = makeContext(rect, 0);
+        // init() loads the media once; later resizes only re-sample it.
+        if (initialised) scene.resize(wctx);
+        else scene.init(wctx);
+        initialised = true;
+        dirty = true;
       };
 
+      const makeContext = (rect: DOMRect, time: number): WorldContext => ({
+        width: rect.width,
+        height: rect.height,
+        grid,
+        input: inputState,
+        style: 'tiles',
+        auto: true,
+        habitat: { top: 0, bottom: rect.height, left: 0, right: rect.width },
+        time,
+        quality: 1,
+        bg: 0x08080c,
+      });
+
       resizeCustom();
+      const resizeObserver = new ResizeObserver(() => resizeCustom());
+      resizeObserver.observe(canvas);
+      // Canvas text can't trigger a web-font load: measure again once the mono face is in.
+      document.fonts?.load(`600 ${fontPx}px "JetBrains Mono"`).then(() => {
+        if (customSceneRef.current === scene) resizeCustom();
+      });
+
+      // Videos stop decoding while the tab is hidden or motion is reduced.
+      const syncPlayback = () => scene.setPlaying(!document.hidden && !reducedMotion);
+      syncPlayback();
+      document.addEventListener('visibilitychange', syncPlayback);
 
       const loop = (now: number) => {
+        customRafRef.current = requestAnimationFrame(loop);
+
+        // Nothing changing (still picture, pointer at rest, no wake or ripples):
+        // keep the slow ambient drift at ~12 fps, or hold the frame under reduced motion.
+        const busy = !scene.isIdle() || now - lastMove < 800 || inputState.clicks.length > 0;
+        const gap = reducedMotion ? Infinity : 1000 / 12;
+        if (!dirty && !busy && now - lastDraw < gap) return;
+
         const dt = Math.min(0.1, (now - lastTime) / 1000);
         lastTime = now;
+        lastDraw = now;
+        dirty = false;
 
         const rect = canvas.getBoundingClientRect();
-        const wctx: WorldContext = {
-          width: rect.width,
-          height: rect.height,
-          grid,
-          input: inputState,
-          style: 'tiles',
-          auto: true,
-          habitat: { top: 0, bottom: rect.height, left: 0, right: rect.width },
-          time: now / 1000,
-          quality: 1,
-          bg: 0x08080c,
-        };
+        const wctx = makeContext(rect, now / 1000);
 
         scene.update(reducedMotion ? 0 : dt, wctx);
         inputState.clicks = [];
+        // Velocity is per-move; once read, a resting pointer must not keep spawning ripples.
+        inputState.vx = 0;
+        inputState.vy = 0;
 
         grid.clear();
         scene.render(wctx);
 
-        rasterizer.prepareBackdrop(rect.width, rect.height, window.devicePixelRatio || 1, scene.backdrop);
-        rasterizer.draw(ctx2d, grid, rect.width, rect.height, `600 ${fontSize || 14}px "Geist Mono", monospace`, null, true);
-
-        customRafRef.current = requestAnimationFrame(loop);
+        rasterizer.prepareBackdrop(rect.width, rect.height, Math.min(window.devicePixelRatio || 1, 2), scene.backdrop);
+        rasterizer.draw(ctx2d, grid, rect.width, rect.height, font, null, true);
       };
 
       customRafRef.current = requestAnimationFrame(loop);
@@ -187,6 +215,8 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
           cancelAnimationFrame(customRafRef.current);
           customRafRef.current = null;
         }
+        resizeObserver.disconnect();
+        document.removeEventListener('visibilitychange', syncPlayback);
         scene.destroy();
         window.removeEventListener('pointermove', onPointerMove);
         canvas.removeEventListener('pointerleave', onPointerLeave);

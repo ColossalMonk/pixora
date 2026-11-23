@@ -6,6 +6,7 @@ import { Layer, code } from '../core/RenderGrid';
 import { hex, mix } from '../core/Color';
 import { cellColor, tone } from '../image-converter/ImageProcessor';
 import { InkRamp, cellHash, measuredRamp, pickGlyph, sampleLinear } from '../image-converter/AsciiQuality';
+import { EdgeDetector, SUB_X, SUB_Y, ShapeTable, matchShape, shapeTable } from '../image-converter/ShapeMatch';
 import { ImageStore } from '../../services/imageStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { CustomImageConfig, DEFAULT_CUSTOM_CONFIG } from '../../types/settings';
@@ -54,6 +55,14 @@ export class CustomImageScene extends BaseEnvironment {
 
   private ramp: InkRamp = measuredRamp(RAMP_FONT);
   private prevGlyph = new Int16Array(0);
+  /** Characters mode: shape-matched glyph per cell (index into `shapes`), -1 for flat cells. */
+  private shapeIdx = new Int16Array(0);
+  private shapes: ShapeTable | null = null;
+  private edges = new EdgeDetector();
+  private edgeTick = 0;
+  private subInk = new Float32Array(SUB_X * SUB_Y);
+  private fontFamily = '"JetBrains Mono", ui-monospace, monospace';
+  private fontPx = 14;
   private videoFrames = 0;
   private builtFrames = -1;
   private frameCallbackOn = false;
@@ -195,6 +204,7 @@ export class CustomImageScene extends BaseEnvironment {
       this.bottom = new Uint32Array(n);
       this.bits = new Uint8Array(n);
       this.prevGlyph = new Int16Array(n).fill(-1);
+      this.shapeIdx = new Int16Array(n).fill(-1);
     }
 
     if (!source) return;
@@ -203,7 +213,11 @@ export class CustomImageScene extends BaseEnvironment {
     if (srcW <= 0 || srcH <= 0) return;
 
     const conf = this.getConfig();
-    const sub = conf.renderMode === 'braille' ? [2, 4] : conf.renderMode === 'blocks' ? [1, 2] : [1, 1];
+    const sub =
+      conf.renderMode === 'braille' ? [2, 4]
+      : conf.renderMode === 'blocks' ? [1, 2]
+      : conf.renderMode === 'characters' ? [SUB_X, SUB_Y]
+      : [1, 1];
     const w = this.cols * sub[0];
     const h = this.rows * sub[1];
 
@@ -218,11 +232,18 @@ export class CustomImageScene extends BaseEnvironment {
       sy = (srcH - sh) / 2;
     }
 
-    // Average each sample over 3×3 (2×2 for video) pixels in linear light.
-    const data = sampleLinear(source, sx, sy, sw, sh, w, h, this.isVideo ? 2 : 3, this.offscreenCanvas);
+    // Average each sample over several pixels in linear light (fewer when the
+    // grid is already sub-sampled, and for video).
+    const ss = sub[0] * sub[1] > 4 ? (this.isVideo ? 1 : 2) : this.isVideo ? 2 : 3;
+    const data = sampleLinear(source, sx, sy, sw, sh, w, h, ss, this.offscreenCanvas);
     const lum = tone(data, w * h, conf);
     // The web font may have arrived since the last build: re-measure (cached once it has).
     this.ramp = measuredRamp(RAMP_FONT);
+
+    if (conf.renderMode === 'characters') {
+      this.buildCharacters(ctx, data, lum, w, h, conf);
+      return;
+    }
 
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
@@ -253,6 +274,73 @@ export class CustomImageScene extends BaseEnvironment {
             ? this.toned(data, i, lum[i], conf.colorMode)
             : cellColor(data[i * 4], data[i * 4 + 1], data[i * 4 + 2], lum[i], conf.colorMode);
         }
+      }
+    }
+  }
+
+  /** Pixora: font the canvas draws with, so shapes are measured at the real cell shape. */
+  public setFont(family: string, px: number): void {
+    if (family === this.fontFamily && px === this.fontPx) return;
+    this.fontFamily = family;
+    this.fontPx = px;
+    this.configVersion++;
+  }
+
+  /**
+   * Characters mode: read each cell as 3×5 sub-samples. Cells with structure
+   * (a contour, a stroke, an edge outline) get the glyph whose shape matches;
+   * flat cells keep the tone ramp with its Bayer blend.
+   */
+  private buildCharacters(
+    ctx: WorldContext,
+    data: Uint8ClampedArray,
+    lum: Float32Array,
+    w: number,
+    h: number,
+    conf: CustomImageConfig,
+  ): void {
+    this.shapes = shapeTable(this.fontFamily, this.fontPx, ctx.grid.cellWidth, ctx.grid.cellHeight);
+    const strength = Math.max(0, Math.min(1, conf.edges ?? 0));
+    // Video: refresh edges every other frame (contours move slowly; halves the cost).
+    let ridge: Float32Array | null = null;
+    if (strength > 0) {
+      const reuse = this.isVideo && (this.edgeTick++ & 1) === 1 && this.edges.ridge.length === w * h;
+      ridge = reuse ? this.edges.ridge : this.edges.detect(lum, w, h);
+    }
+    const subInk = this.subInk;
+    const cols = this.cols;
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = r * cols + c;
+        let sum = 0, lo = 1, hi = 0, edge = 0, sr = 0, sg = 0, sb = 0;
+        for (let y = 0; y < SUB_Y; y++) {
+          const row = (r * SUB_Y + y) * w + c * SUB_X;
+          for (let x = 0; x < SUB_X; x++) {
+            const i = row + x;
+            let v = lum[i];
+            if (ridge) {
+              const e = ridge[i] * strength;
+              if (e > v) v = e;
+              if (ridge[i] > edge) edge = ridge[i];
+            }
+            subInk[y * SUB_X + x] = v;
+            sum += v;
+            if (v < lo) lo = v;
+            if (v > hi) hi = v;
+            sr += data[i * 4];
+            sg += data[i * 4 + 1];
+            sb += data[i * 4 + 2];
+          }
+        }
+        const k = 1 / (SUB_X * SUB_Y);
+        const mean = sum * k;
+        this.lum[cell] = mean;
+        let color = cellColor(sr * k, sg * k, sb * k, mean, conf.colorMode);
+        // Outlines read a little brighter than the fill around them.
+        if (edge * strength > 0.25) color = mix(color, hex('#ffffff'), Math.min(0.35, edge * strength * 0.4));
+        this.color[cell] = color;
+        const structured = mean > 0.04 && (hi - lo > 0.28 || edge * strength > 0.3);
+        this.shapeIdx[cell] = structured ? matchShape(this.shapes, subInk, 0, mean, this.shapeIdx[cell]) : -1;
       }
     }
   }
@@ -498,6 +586,17 @@ export class CustomImageScene extends BaseEnvironment {
         switch (conf.renderMode) {
           case 'characters': {
             const cell = r * cols + c;
+            // Structured source cell and no effect changing its tone much: use its shape glyph.
+            const si = this.shapeIdx[iDom];
+            if (si >= 0 && this.shapes && Math.abs(effectiveLum - rawLum) < 0.12) {
+              const cp = this.shapes.codes[si];
+              this.prevGlyph[cell] = -1;
+              if (cp === 32) break;
+              const a = Math.min(1, 0.5 + effectiveLum * 0.5);
+              if (bgGlowAlpha > 0.02) grid.putSolid(c, r, cp, col, a, bgGlowCol, bgGlowAlpha, Layer.SKY);
+              else grid.put(c, r, cp, col, a, Layer.SKY);
+              break;
+            }
             let gi = pickGlyph(ramp, effectiveLum, c, r, this.prevGlyph[cell]);
             // A few glyphs at the lantern's rim flicker one step brighter.
             if (lantern > 0.2 && lantern < 0.5 && gi < ramp.codes.length - 1 && cellHash(c + Math.floor(t * 8), r) > 0.82) gi++;

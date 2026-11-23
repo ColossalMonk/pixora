@@ -32,6 +32,8 @@ export interface CustomImageConfig {
   gamma: number; // 0.5 .. 2.0
   invert: boolean;
   glow: number; // 0 .. 1 subtle backlight glow
+  /** Characters mode: how strongly contours are inked in as outlines (0 = off). */
+  edges?: number; // 0 .. 1
   effect: CustomPointerEffect;
   flowSpeed: number; // 0.2 .. 3.0
   flowSpread: number; // 0.2 .. 3.0
@@ -48,6 +50,7 @@ export const DEFAULT_CUSTOM_CONFIG: CustomImageConfig = {
   gamma: 1,
   invert: false,
   glow: 0.45,
+  edges: 0.35,
   effect: 'gas',
   flowSpeed: 1.0,
   flowSpread: 1.0,

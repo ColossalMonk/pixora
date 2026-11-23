@@ -426,6 +426,30 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
                     />
                   </div>
 
+                  {/* Edge outlines (Characters mode) */}
+                  {currentCustomConfig.renderMode === 'characters' && (
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="text-slate-300">Edge Outlines</span>
+                        <span className="text-slate-400 font-mono">
+                          {Math.round((currentCustomConfig.edges ?? 0) * 100)}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={currentCustomConfig.edges ?? 0}
+                        onChange={(e) =>
+                          setCustomConfig(activeCustomSlot, { edges: parseFloat(e.target.value) })
+                        }
+                        className="w-full accent-teal-400 bg-white/10 h-1.5 rounded-lg cursor-pointer"
+                        aria-label="Edge outlines"
+                      />
+                    </div>
+                  )}
+
                   {/* Pointer Dynamics: Gas Flow, Ripple, Still */}
                   <div className="pt-3 border-t border-white/10 space-y-4">
                     <div>

@@ -87,11 +87,12 @@ export function sampleLinear(
 // ── measured-ink ramp ────────────────────────────────────────────────
 
 /**
- * Candidate glyphs; the measured ramp keeps the ones that spread tones evenly.
- * Mostly symbols (letters make a picture read like text), with a few round
- * shapes for the dense end.
+ * Candidate glyphs for flat areas; the measured ramp keeps the ones that spread
+ * tones evenly. No directional strokes (| / \ < >): in flat areas they read as
+ * stripes, and contours get their strokes from shape matching (ShapeMatch.ts).
+ * No letters either: they make a picture read like text.
  */
-const CANDIDATES = " .`'-,:;_~^\"=+<>!?|/\\()[]{}*xo%#&$@08";
+const CANDIDATES = " .`',:;+*xo0%#&$@8";
 
 export interface InkRamp {
   codes: Uint16Array; // glyph code points, lightest → darkest

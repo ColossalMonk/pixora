@@ -6,6 +6,7 @@ import { CustomSlotId, WorldContext } from '../../types/environment';
 import { CustomImageScene } from '../../engine/environments/CustomImageScene';
 import { RenderGrid } from '../../engine/core/RenderGrid';
 import { Rasterizer } from '../../engine/core/Rasterizer';
+import { GlyphGL } from '../../engine/core/GlyphGL';
 
 interface AsciiCanvasProps {
   focusRef?: React.RefObject<HTMLElement | null>;
@@ -74,6 +75,8 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
       const slotId = activeScene as CustomSlotId;
       const scene = new CustomImageScene(slotId);
       customSceneRef.current = scene;
+      // Dev only: lets the console inspect the live scene.
+      if (location.hostname === 'localhost') (window as unknown as { __pixoraScene?: CustomImageScene }).__pixoraScene = scene;
 
       const canvas = canvasRef.current;
       const ctx2d = canvas.getContext('2d');
@@ -131,6 +134,14 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
       canvas.addEventListener('pointerleave', onPointerLeave);
       canvas.addEventListener('pointerdown', onPointerDown);
 
+      // Cells are drawn by WebGL on a layer above this canvas when the browser
+      // supports it (about 4× faster on full pictures and video); otherwise 2D.
+      const glCanvas = document.createElement('canvas');
+      glCanvas.setAttribute('aria-hidden', 'true');
+      glCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:block';
+      let glRenderer = GlyphGL.create(glCanvas);
+      if (glRenderer) canvas.after(glCanvas);
+
       const resizeCustom = () => {
         const rect = canvas.getBoundingClientRect();
         if (rect.width < 1 || rect.height < 1) return;
@@ -138,12 +149,18 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
         canvas.width = Math.round(rect.width * dpr);
         canvas.height = Math.round(rect.height * dpr);
         ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+        if (glRenderer) {
+          // The WebGL layer draws the cells; this canvas only holds the backdrop.
+          rasterizer.prepareBackdrop(rect.width, rect.height, dpr, scene.backdrop);
+          rasterizer.paintBackdropTo(ctx2d, rect.width, rect.height);
+        }
 
         ctx2d.font = font;
         const cw = ctx2d.measureText('M').width || fontPx * 0.6;
         const ch = Math.round(fontPx * 1.18);
         grid.resize(Math.ceil(rect.width / cw), Math.ceil(rect.height / ch), cw, ch);
 
+        scene.setFont('"JetBrains Mono", ui-monospace, monospace', fontPx);
         const wctx = makeContext(rect, 0);
         // init() loads the media once; later resizes only re-sample it.
         if (initialised) scene.resize(wctx);
@@ -204,7 +221,14 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
         grid.clear();
         scene.render(wctx);
 
-        rasterizer.prepareBackdrop(rect.width, rect.height, Math.min(window.devicePixelRatio || 1, 2), scene.backdrop);
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        if (glRenderer && glRenderer.draw(grid, rect.width, rect.height, dpr, font)) return;
+        if (glRenderer) {
+          // Context lost: fall back to the 2D renderer for this scene.
+          glRenderer = null;
+          glCanvas.remove();
+        }
+        rasterizer.prepareBackdrop(rect.width, rect.height, dpr, scene.backdrop);
         rasterizer.draw(ctx2d, grid, rect.width, rect.height, font, null, true);
       };
 
@@ -215,6 +239,7 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
           cancelAnimationFrame(customRafRef.current);
           customRafRef.current = null;
         }
+        glCanvas.remove();
         resizeObserver.disconnect();
         document.removeEventListener('visibilitychange', syncPlayback);
         scene.destroy();

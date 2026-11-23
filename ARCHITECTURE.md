@@ -37,11 +37,20 @@ The media lives in IndexedDB (`services/imageStore.ts`, one entry per slot). `im
 
 - **Linear-light supersampling:** 3×3 (video 2×2) pixels per sample, averaged in linear light.
 - **Measured ramp:** symbol glyphs measured for ink in JetBrains Mono, keeping ~20 evenly spaced tones.
-- **Bayer 4×4 blend** between the two glyphs around each tone, plus **hysteresis** (a cell keeps its glyph within a small margin) against shimmer.
+- **Bayer 4×4 blend** between the two glyphs around each tone, plus **hysteresis** (a cell keeps its glyph within a small margin) against shimmer. The flat-area ramp has no directional glyphs, which read as stripes.
+
+`image-converter/ShapeMatch.ts` adds structure:
+
+- **Shape matching:** Characters mode samples 3×5 sub-cells per cell. Each stroke-like glyph's 3×5 coverage is measured once at the real cell size. Where a cell has contrast, the glyph is picked by tone error plus (1 − correlation) of the ink layouts, among glyphs of similar ink. Letters are excluded so pictures don't read like text.
+- **Edge outlines:** Sobel gradients feed a structure tensor that is blurred twice, gated by coherence and thresholded at mean + 1.1σ, then thinned by non-maximum suppression. The ridges are inked in, scaled by the *Edge Outlines* slider. Video refreshes edges every other frame.
+
+Measured at 1440×900 in Chrome: a still picture builds in about 24 ms (once), a video frame in about 11 ms, and `render()` takes about 2.5 ms.
 
 Videos are re-sampled once per decoded frame (`requestVideoFrameCallback`, falling back to `currentTime`) and pause while the tab is hidden or motion is reduced. A still picture redraws at ~12 fps for its slow drift, or holds the frame under reduced motion.
 
-Render modes: Characters, Braille, Tiles, Blocks; colour modes from true colour to monochrome; brightness/contrast/gamma and a backlight glow. Pointer effects: gas (`physics/FluidGasField.ts`, semi-Lagrangian advection with vorticity and plume spread), travelling ripples, drift, or the **lantern** (a lagged Gaussian light with a 12-point fading trail, per-cell grain, a warm colour shift and a little rim flicker). Cells go into `core/RenderGrid` (typed arrays) and `core/Rasterizer` draws them batched by colour and opacity.
+Render modes: Characters, Braille, Tiles, Blocks; colour modes from true colour to monochrome; brightness/contrast/gamma and a backlight glow. Pointer effects: gas (`physics/FluidGasField.ts`, semi-Lagrangian advection with vorticity and plume spread), travelling ripples, drift, or the **lantern** (a lagged Gaussian light with a 12-point fading trail, per-cell grain, a warm colour shift and a little rim flicker). Cells go into `core/RenderGrid` (typed arrays).
+
+`core/GlyphGL.ts` draws them with WebGL2 on a transparent layer above the backdrop canvas. It packs each lit cell into one 20-byte instance (column, row, atlas slot, glyph RGBA, tile RGBA), uses a lazily filled glyph atlas drawn with the same font and centring, and draws Braille as dots, all in one `drawArraysInstanced`. A full 1440×900 picture takes about 4 ms, against about 17 ms for the 2D path. If WebGL2 is missing or the context is lost, `core/Rasterizer` (canvas 2D, batched by colour and opacity) takes over.
 
 ## UI
 

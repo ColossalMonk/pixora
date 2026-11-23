@@ -13,7 +13,7 @@
 **An Immersive, Generative ASCII-Art Browser New Tab Sanctuary**
 
 [![Manifest V3](https://img.shields.io/badge/Chrome%20Extension-Manifest%20V3-blue.svg?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/)
-[![Version](https://img.shields.io/badge/Version-2.1.1-emerald.svg?style=flat-square)](https://github.com/ColossalMonk/pixora/releases/latest)
+[![Version](https://img.shields.io/badge/Version-2.2.0-emerald.svg?style=flat-square)](https://github.com/ColossalMonk/pixora/releases/latest)
 [![React 19](https://img.shields.io/badge/React-19.0-61dafb.svg?style=flat-square)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg?style=flat-square)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-amber.svg?style=flat-square)](LICENSE)

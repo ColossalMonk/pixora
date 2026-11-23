@@ -84,7 +84,7 @@ export const App: React.FC = () => {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#06070c] text-slate-100 font-sans select-none">
       {/* 1. Procedural Simulation Canvas (Full Screen) */}
-      <AsciiCanvas focusRef={focusRef} />
+      <AsciiCanvas focusRef={focusRef} calm={!isZenMode} />
 
       {/* 2. Top Bar: Weather (Left), Selection Pill on Top Hover (Center), Zen & Gear Icons (Right) */}
       <TopBar

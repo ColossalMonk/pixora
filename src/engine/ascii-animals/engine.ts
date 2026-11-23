@@ -93,6 +93,12 @@ export class AnimalEngine {
     if (this.reducedMotion.matches) this.drawStill();
   }
 
+  /** Pixora: keep the animals faded behind this box (CSS pixels, canvas-relative). */
+  setCalm(rect: { x: number; y: number; w: number; h: number } | null) {
+    this.renderer.setCalm(rect);
+    if (this.reducedMotion.matches) this.drawStill();
+  }
+
   setTheme(theme: Theme) {
     this.renderer.setTheme(theme);
     if (this.reducedMotion.matches) this.drawStill();

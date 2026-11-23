@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Pixora",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Procedural animated wildlife and custom media glow on your new tab, with search, shortcuts, weather and greetings.",
   "chrome_url_overrides": {
     "newtab": "index.html"

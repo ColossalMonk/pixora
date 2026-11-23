@@ -9,9 +9,11 @@ import { Rasterizer } from '../../engine/core/Rasterizer';
 
 interface AsciiCanvasProps {
   focusRef?: React.RefObject<HTMLElement | null>;
+  /** Fade animals behind the focus box's first child (the clock/search column). */
+  calm?: boolean;
 }
 
-export const AsciiCanvas: React.FC<AsciiCanvasProps> = () => {
+export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animalEngineRef = useRef<AnimalEngine | null>(null);
   const customSceneRef = useRef<CustomImageScene | null>(null);
@@ -202,6 +204,38 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = () => {
       }
     }
   }, [animalTweaks, activeScene, isAnimal]);
+
+  // Calm zone: animals fade behind the clock, search and shortcuts (off in Zen mode).
+  useEffect(() => {
+    const engine = animalEngineRef.current;
+    const box = focusRef?.current?.firstElementChild as HTMLElement | null | undefined;
+    if (!isAnimal || !engine) return;
+    if (!calm || !box) {
+      engine.setCalm(null);
+      return;
+    }
+    const measure = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const c = canvas.getBoundingClientRect();
+      // offset* ignores the Zen-mode scale transition, so the zone doesn't jitter.
+      let x = 0;
+      let y = 0;
+      for (let el: HTMLElement | null = box; el; el = el.offsetParent as HTMLElement | null) {
+        x += el.offsetLeft;
+        y += el.offsetTop;
+      }
+      engine.setCalm({ x: x - c.left, y: y - c.top, w: box.offsetWidth, h: box.offsetHeight });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [isLoaded, activeScene, isAnimal, calm, focusRef]);
 
   // Sync custom configs live
   useEffect(() => {

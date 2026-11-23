@@ -13,7 +13,7 @@
 **An Immersive, Generative ASCII-Art Browser New Tab Sanctuary**
 
 [![Manifest V3](https://img.shields.io/badge/Chrome%20Extension-Manifest%20V3-blue.svg?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/)
-[![Version](https://img.shields.io/badge/Version-2.1.0-emerald.svg?style=flat-square)](https://github.com/ColossalMonk/pixora/releases/latest)
+[![Version](https://img.shields.io/badge/Version-2.1.1-emerald.svg?style=flat-square)](https://github.com/ColossalMonk/pixora/releases/latest)
 [![React 19](https://img.shields.io/badge/React-19.0-61dafb.svg?style=flat-square)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg?style=flat-square)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-amber.svg?style=flat-square)](LICENSE)
@@ -177,7 +177,7 @@ Click the gear icon on the top right (or press `S`) to slide out the Tweaks & Se
 
 ### Method 1: Load Release Extension (Fastest)
 
-1. Download **[`pixora-chrome-extension.zip`](https://github.com/ColossalMonk/pixora/releases/latest)** from the latest release.
+1. Open the **[latest release](https://github.com/ColossalMonk/pixora/releases/latest)** and download the `pixora-v<version>-chrome-extension.zip` file under *Assets*.
 2. Unzip the file into a permanent folder on your computer.
 3. Open your browser extension management page:
    - **Google Chrome / Brave**: Navigate to `chrome://extensions`
@@ -229,6 +229,7 @@ Once built, load the `dist/` directory as an unpacked extension in your browser.
 - **Canvas 2D Character Rasterizer**: Custom glyph-batching engine that clusters cells by color and alpha to minimize context state switches, easily pushing 60 FPS on high-DPI displays.
 - **Semi-Lagrangian Fluid Gas Field**: Multi-scale Navier-Stokes solver using staggered bilinear sampling for continuous, silky advection without artifacting.
 - **IndexedDB Media Vault**: Custom photos and video blobs are stored locally in the browser's IndexedDB (`pixora-media` database) without memory size limits.
+- **Calm Zone**: animals fade softly behind the clock, search and shortcuts so text stays readable; Zen mode lifts it.
 - **Zero Heavy External Dependencies**: Pure TypeScript mathematical models without bloated 3D libraries or external styling frameworks.
 
 ---
@@ -243,10 +244,10 @@ Once built, load the `dist/` directory as an unpacked extension in your browser.
 
 ## Credits & Acknowledgments
 
-- **[ascii-animals](https://github.com/DesignerStephen1/ascii-animals)** by Stephen — Authentic procedural wildlife flocking, mathematical creature models, and animal pen shaders.
+- **[ascii-animals](https://github.com/DesignerStephen1/ascii-animals)** by drewdi and Stephen Zhang (MIT): the animal simulations and renderer in `src/engine/ascii-animals/` are ported from it. Its licence is kept in [`src/engine/ascii-animals/LICENSE`](src/engine/ascii-animals/LICENSE) and [`THIRD_PARTY_NOTICES.txt`](THIRD_PARTY_NOTICES.txt), which also ships inside the extension zip.
 
 ---
 
 ## License
 
-MIT © [ColossalMonk](https://github.com/ColossalMonk). Distributed under the MIT License.
+MIT © [ColossalMonk](https://github.com/ColossalMonk). See [LICENSE](LICENSE). Third-party code keeps its own licence (see above).

@@ -220,6 +220,8 @@ export class AsciiRenderer {
 
   private ctx: CanvasRenderingContext2D;
   private bg: HTMLCanvasElement;
+  private calmLayer: HTMLCanvasElement | null = null;
+  private calmRect: { x: number; y: number; w: number; h: number } | null = null;
   private dpr = 1;
   private width = 0;
   private height = 0;
@@ -331,6 +333,7 @@ export class AsciiRenderer {
     g.fillRect(0, 0, W, H);
     const [gr, gg, gb, ga] = this.palette.grid;
     paintGrid(g, W, H, cw, ch, dpr, `rgba(${gr},${gg},${gb},${(ga * this.tuning.grid).toFixed(3)})`);
+    this.paintCalm();
   }
 
   render(flock: Flock<any>, dt: number) {
@@ -357,6 +360,55 @@ export class AsciiRenderer {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     this.drawCells();
+
+    if (this.calmLayer) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(this.calmLayer, 0, 0);
+    }
+  }
+
+  // ── calm zone (Pixora) ──────────────────────────────────────────────
+
+  /**
+   * Fade the animals behind a box (the clock and search) by laying the plain
+   * background back over it with soft elliptical edges. null turns it off.
+   */
+  setCalm(rect: { x: number; y: number; w: number; h: number } | null) {
+    this.calmRect = rect && rect.w > 0 && rect.h > 0 ? rect : null;
+    this.paintCalm();
+  }
+
+  private paintCalm() {
+    const rect = this.calmRect;
+    if (!rect || this.width === 0) {
+      this.calmLayer = null;
+      return;
+    }
+    const layer = this.calmLayer ?? document.createElement("canvas");
+    layer.width = this.canvas.width;
+    layer.height = this.canvas.height;
+    const g = layer.getContext("2d");
+    if (!g) return;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = "source-over";
+    g.drawImage(this.bg, 0, 0);
+
+    // Elliptical mask: solid over the box, fading out a little beyond it.
+    const { dpr } = this;
+    const rx = rect.w / 2 + 56;
+    const ry = rect.h / 2 + 56;
+    g.globalCompositeOperation = "destination-in";
+    g.setTransform(dpr * (rx / ry), 0, 0, dpr, (rect.x + rect.w / 2) * dpr, (rect.y + rect.h / 2) * dpr);
+    // Drawn as a circle of radius R in a space stretched by rx/ry, so it lands as an ellipse.
+    const R = ry * 1.35;
+    const mask = g.createRadialGradient(0, 0, 0, 0, 0, R);
+    mask.addColorStop(0, "rgba(0,0,0,0.9)");
+    mask.addColorStop(0.68, "rgba(0,0,0,0.8)");
+    mask.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = mask;
+    g.fillRect(-R, -R, R * 2, R * 2);
+    g.globalCompositeOperation = "source-over";
+    this.calmLayer = layer;
   }
 
   // ── trail ───────────────────────────────────────────────────────────

@@ -3,8 +3,11 @@ import { UserSettings, ShortcutItem, SearchEngineId, CustomImageConfig, DEFAULT_
 import { CharacterStyle, ColorTheme } from '../types/engine';
 import { CustomSlotId, SceneId } from '../types/environment';
 import { StorageService } from '../services/storageService';
+import { CATALOG } from '../data/catalog';
 
 const SETTINGS_KEY = 'pixora_user_settings_v2';
+const LEGACY_SETTINGS_KEY = 'pixora_user_settings_v1';
+const SCENE_IDS = new Set<string>(CATALOG.map((s) => s.id));
 
 const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   { id: '1', title: 'GitHub', url: 'https://github.com' },
@@ -48,6 +51,23 @@ export const DEFAULT_SETTINGS: UserSettings = {
   showGreeting: true,
   showShortcuts: true,
 };
+
+/**
+ * Keeps only known settings whose type matches the default, and drops a scene id
+ * that no longer exists (e.g. a v2.0 world), so the tab falls back to an animal.
+ */
+function sanitize(raw: Record<string, unknown>): Partial<UserSettings> {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof UserSettings)[]) {
+    const value = raw[key];
+    const fallback = DEFAULT_SETTINGS[key];
+    if (value === undefined || value === null) continue;
+    if (Array.isArray(fallback) ? !Array.isArray(value) : typeof value !== typeof fallback) continue;
+    out[key] = value;
+  }
+  if (!SCENE_IDS.has(out.activeScene as string)) delete out.activeScene;
+  return out as Partial<UserSettings>;
+}
 
 interface SettingsStore extends UserSettings {
   isLoaded: boolean;
@@ -96,7 +116,17 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   loadSettings: async () => {
     try {
-      const saved = await StorageService.get<Partial<UserSettings> | null>(SETTINGS_KEY, null);
+      let raw = await StorageService.get<Record<string, unknown> | null>(SETTINGS_KEY, null);
+      if (!raw) {
+        // Carry over shortcuts, name, city and preferences from v2.0 and earlier.
+        const legacy = await StorageService.get<Record<string, unknown> | null>(LEGACY_SETTINGS_KEY, null);
+        if (legacy) {
+          // v2.0 animal tweaks used different knob names, so they start fresh.
+          raw = { ...legacy, animalTweaks: undefined, activeScene: legacy.activeAnimal };
+        }
+      }
+      const saved = raw ? sanitize(raw) : null;
+      if (raw && saved) StorageService.set(SETTINGS_KEY, saved);
       if (saved) {
         let weatherCity = saved.weatherCity?.trim() || 'New Delhi';
         if (weatherCity.toLowerCase() === 'calcutta' || weatherCity.toLowerCase() === 'kolkata') {

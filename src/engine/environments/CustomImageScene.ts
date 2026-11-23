@@ -5,12 +5,14 @@ import { FluidGasField } from '../physics/FluidGasField';
 import { Layer, code } from '../core/RenderGrid';
 import { hex, mix } from '../core/Color';
 import { cellColor, tone } from '../image-converter/ImageProcessor';
+import { InkRamp, cellHash, measuredRamp, pickGlyph, sampleLinear } from '../image-converter/AsciiQuality';
 import { ImageStore } from '../../services/imageStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { CustomImageConfig, DEFAULT_CUSTOM_CONFIG } from '../../types/settings';
 
-// Classic ASCII ramp
-const RAMP = Array.from(' .:-=+*#%@').map(code);
+/** Font the ramp is measured in (size doesn't matter, the face does). */
+const RAMP_FONT = '600 14px "JetBrains Mono"';
+const LANTERN_TRAIL = 12;
 const TILE_GLYPHS = Array.from(' ·:;+=').map(code);
 const BRAILLE_BIT = [
   [0x01, 0x02, 0x04, 0x40],
@@ -44,12 +46,27 @@ export class CustomImageScene extends BaseEnvironment {
   private videoUrl: string | null = null;
   private isVideo = false;
   private offscreenCanvas: HTMLCanvasElement = document.createElement('canvas');
-  private offscreenCtx: CanvasRenderingContext2D | null = null;
 
   private configVersion = 0;
   private builtVersion = -1;
   private wantPlay = true;
   private lastVideoTime = -1;
+
+  private ramp: InkRamp = measuredRamp(RAMP_FONT);
+  private prevGlyph = new Int16Array(0);
+  private videoFrames = 0;
+  private builtFrames = -1;
+  private frameCallbackOn = false;
+
+  // Lantern: smoothed pointer, rising/falling intensity and a fading trail.
+  private lx = -1;
+  private ly = -1;
+  private lanternLevel = 0;
+  private trail: { x: number; y: number; w: number }[] = [];
+  private trailClock = 0;
+  private lanternSettled = true;
+  private trailX = -99;
+  private trailY = -99;
 
   private lum = new Float32Array(0);
   private color = new Uint32Array(0);
@@ -135,6 +152,19 @@ export class CustomImageScene extends BaseEnvironment {
         vid.onloadeddata = () => {
           this.configVersion++;
         };
+        // Count decoded frames, so we re-sample exactly once per new frame.
+        const rvfc = (vid as HTMLVideoElement & {
+          requestVideoFrameCallback?: (cb: () => void) => number;
+        }).requestVideoFrameCallback;
+        this.frameCallbackOn = typeof rvfc === 'function';
+        if (rvfc) {
+          const onFrame = () => {
+            if (this.video !== vid) return;
+            this.videoFrames++;
+            rvfc.call(vid, onFrame);
+          };
+          rvfc.call(vid, onFrame);
+        }
         if (this.wantPlay) vid.play().catch(() => {});
         this.video = vid;
       } else {
@@ -164,6 +194,7 @@ export class CustomImageScene extends BaseEnvironment {
       this.color = new Uint32Array(n);
       this.bottom = new Uint32Array(n);
       this.bits = new Uint8Array(n);
+      this.prevGlyph = new Int16Array(n).fill(-1);
     }
 
     if (!source) return;
@@ -187,17 +218,11 @@ export class CustomImageScene extends BaseEnvironment {
       sy = (srcH - sh) / 2;
     }
 
-    if (this.offscreenCanvas.width !== w || this.offscreenCanvas.height !== h) {
-      this.offscreenCanvas.width = w;
-      this.offscreenCanvas.height = h;
-      this.offscreenCtx = this.offscreenCanvas.getContext('2d', { willReadFrequently: true });
-    }
-    const g = this.offscreenCtx;
-    if (!g) return;
-    g.imageSmoothingQuality = 'high';
-    g.drawImage(source, sx, sy, sw, sh, 0, 0, w, h);
-    const data = g.getImageData(0, 0, w, h).data;
+    // Average each sample over 3×3 (2×2 for video) pixels in linear light.
+    const data = sampleLinear(source, sx, sy, sw, sh, w, h, this.isVideo ? 2 : 3, this.offscreenCanvas);
     const lum = tone(data, w * h, conf);
+    // The web font may have arrived since the last build: re-measure (cached once it has).
+    this.ramp = measuredRamp(RAMP_FONT);
 
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
@@ -242,10 +267,15 @@ export class CustomImageScene extends BaseEnvironment {
   public update(dt: number, ctx: WorldContext): void {
     this.time += dt;
     const vid = this.isVideo ? this.video : null;
-    // Only re-sample a video when it has moved on to a new frame.
-    const newVideoFrame = !!vid && vid.readyState >= 2 && vid.currentTime !== this.lastVideoTime;
+    // Only re-sample a video when it has moved on to a new frame (frame callbacks
+    // where the browser has them, otherwise a changed currentTime).
+    const newVideoFrame = !!vid && vid.readyState >= 2 &&
+      (this.frameCallbackOn ? this.videoFrames !== this.builtFrames : vid.currentTime !== this.lastVideoTime);
     if (newVideoFrame || this.builtVersion !== this.configVersion) {
-      if (vid) this.lastVideoTime = vid.currentTime;
+      if (vid) {
+        this.lastVideoTime = vid.currentTime;
+        this.builtFrames = this.videoFrames;
+      }
       this.build(ctx);
     }
     const { input, grid } = ctx;
@@ -269,7 +299,10 @@ export class CustomImageScene extends BaseEnvironment {
       this.py = ty;
     }
 
-    if (effect === 'gas' || effect === 'drift') {
+    if (effect !== 'lantern') this.lanternSettled = true;
+    if (effect === 'lantern') {
+      this.updateLantern(dt, input.active ? tx : -1, ty, speedMult, decayMult);
+    } else if (effect === 'gas' || effect === 'drift') {
       // 1. Gas Flow / Billowing Wake
       if (input.active && input.x >= 0) {
         this.fluid.move(input.x / ctx.width, input.y / ctx.height);
@@ -334,6 +367,11 @@ export class CustomImageScene extends BaseEnvironment {
     const t = this.time;
     const isGas = (effect === 'gas' || effect === 'drift') && this.fluid.active;
     const isRipple = effect === 'ripple' && this.wavePulses.length > 0;
+    const isLantern = effect === 'lantern' && this.lx >= 0;
+    const lanternR = 9 * (conf.flowSpread ?? 1);
+    const lanternR2 = lanternR * lanternR;
+    const ramp = this.ramp;
+    const WARM = hex('#fff0d6');
 
     // Ambient gentle silky breath (very low frequency micro-drift)
     const ambT = t * 0.35;
@@ -418,9 +456,24 @@ export class CustomImageScene extends BaseEnvironment {
         const iDom = (fy < 0.5 ? (fx < 0.5 ? i00 : i10) : (fx < 0.5 ? i01 : i11));
         let col = this.color[iDom];
 
+        // Lantern: Gaussian pool of light + trail, with per-cell grain.
+        let lantern = 0;
+        if (isLantern) {
+          const dx = c - this.lx;
+          const dy = (r - this.ly) / grid.aspect;
+          let L = Math.exp(-(dx * dx + dy * dy) / lanternR2) * this.lanternLevel;
+          for (const p of this.trail) {
+            const ex = c - p.x;
+            const ey = (r - p.y) / grid.aspect;
+            L += p.w * Math.exp(-(ex * ex + ey * ey) / (lanternR2 * 0.55));
+          }
+          lantern = Math.min(1, L) * (0.7 + 0.6 * cellHash(c, r));
+          if (lantern > 0.04) col = mix(col, WARM, Math.min(0.7, lantern * 0.7));
+        }
+
         // Dynamic Cursor Lantern (smooth radial presence)
         let cursorGlow = 0;
-        if (this.px >= 0) {
+        if (this.px >= 0 && !isLantern) {
           const dCursor = Math.hypot(c - this.px, (r - this.py) / grid.aspect);
           if (dCursor < 22) {
             cursorGlow = (1 - dCursor / 22) * 0.4 * glowVal;
@@ -433,20 +486,24 @@ export class CustomImageScene extends BaseEnvironment {
           col = mix(col, hex('#ffffff'), Math.min(0.45, surgeGlow * 0.6));
         }
 
-        const effectiveLum = Math.max(0, Math.min(1, rawLum + surgeGlow * 0.65 + cursorGlow * 0.35));
+        const effectiveLum = Math.max(0, Math.min(1, rawLum + surgeGlow * 0.65 + cursorGlow * 0.35 + lantern * (0.35 + glowVal * 0.5)));
 
         // Backlight Phosphor Glow Calculation
         const bgGlowAlpha = Math.min(
           0.88,
-          (effectiveLum > 0.04 ? (effectiveLum * 0.40 + 0.08) * glowVal : 0) + surgeGlow * 0.5 + cursorGlow
+          (effectiveLum > 0.04 ? (effectiveLum * 0.40 + 0.08) * glowVal : 0) + surgeGlow * 0.5 + cursorGlow + lantern * 0.3
         );
         const bgGlowCol = mix(col, hex('#000000'), 0.44);
 
         switch (conf.renderMode) {
           case 'characters': {
-            if (effectiveLum < 0.04) break;
-            const glyphIdx = Math.min(RAMP.length - 1, Math.floor(effectiveLum * RAMP.length));
-            const glyphCode = RAMP[glyphIdx];
+            const cell = r * cols + c;
+            let gi = pickGlyph(ramp, effectiveLum, c, r, this.prevGlyph[cell]);
+            // A few glyphs at the lantern's rim flicker one step brighter.
+            if (lantern > 0.2 && lantern < 0.5 && gi < ramp.codes.length - 1 && cellHash(c + Math.floor(t * 8), r) > 0.82) gi++;
+            this.prevGlyph[cell] = gi;
+            if (gi === 0) break;
+            const glyphCode = ramp.codes[gi];
             const fgAlpha = Math.min(1, 0.45 + effectiveLum * 0.55);
 
             if (bgGlowAlpha > 0.02) {
@@ -516,10 +573,52 @@ export class CustomImageScene extends BaseEnvironment {
     });
   }
 
+  /**
+   * Lantern (after asciify's brightness hover): the light follows the pointer
+   * with a short lag, fades in and out, and leaves a fading trail.
+   */
+  private updateLantern(dt: number, tx: number, ty: number, speed: number, decay: number): void {
+    const present = tx >= 0;
+    if (present) {
+      if (this.lx < 0) {
+        this.lx = tx;
+        this.ly = ty;
+      }
+      const k = 1 - Math.exp(-dt / (0.055 / Math.max(0.2, speed)));
+      this.lx += (tx - this.lx) * k;
+      this.ly += (ty - this.ly) * k;
+    }
+    const tau = present ? 0.09 : 0.18;
+    this.lanternLevel += ((present ? 1 : 0) - this.lanternLevel) * (1 - Math.exp(-dt / tau));
+
+    // Drop a trail point every ~30 ms while moving; points fade with the decay knob.
+    this.trailClock += dt;
+    // Only a light that is actually moving leaves a trail.
+    if (present && this.trailClock > 0.03 && Math.hypot(this.trailX - this.lx, this.trailY - this.ly) > 0.6) {
+      this.trailClock = 0;
+      this.trailX = this.lx;
+      this.trailY = this.ly;
+      this.trail.push({ x: this.lx, y: this.ly, w: 0.6 });
+      if (this.trail.length > LANTERN_TRAIL) this.trail.shift();
+    }
+    const fade = Math.exp((-dt * 2.2) / Math.max(0.2, decay));
+    for (const p of this.trail) p.w *= fade;
+    while (this.trail.length && this.trail[0].w < 0.02) this.trail.shift();
+    if (!present && this.lanternLevel < 0.01) {
+      this.lx = -1;
+      this.ly = -1;
+    }
+    // Settled: light has caught up with a resting pointer (or faded out) and the trail is gone.
+    const caughtUp = !present || Math.hypot(tx - this.lx, ty - this.ly) < 0.05;
+    this.lanternSettled =
+      this.trail.length === 0 && caughtUp && Math.abs((present ? 1 : 0) - this.lanternLevel) < 0.01;
+  }
+
   /** True when a frame would look the same as the last one (apart from the slow ambient drift). */
   public isIdle(): boolean {
     if (this.builtVersion !== this.configVersion) return false;
     if (this.isVideo && this.video && !this.video.paused) return false;
+    if (!this.lanternSettled) return false;
     return !this.fluid.active && this.wavePulses.length === 0;
   }
 

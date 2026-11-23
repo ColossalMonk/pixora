@@ -33,12 +33,20 @@ graph TD
 
 ## Custom slots (`environments/CustomImageScene.ts`)
 
-The media lives in IndexedDB (`services/imageStore.ts`, one entry per slot). Images are sampled per cell; videos are sampled every frame. Render modes: Characters, Braille, Tiles, Blocks; colour modes from true colour to monochrome; brightness/contrast/gamma and a backlight glow. Pointer effects use `physics/FluidGasField.ts` (semi-Lagrangian advection with vorticity and plume spread) travelling ripples or drift. Cells go into `core/RenderGrid` (typed arrays) and `core/Rasterizer` draws them batched by colour and opacity.
+The media lives in IndexedDB (`services/imageStore.ts`, one entry per slot). `image-converter/AsciiQuality.ts` does the sampling and glyph choice (techniques studied in asciify-engine, MIT, and reimplemented):
+
+- **Linear-light supersampling:** 3×3 (video 2×2) pixels per sample, averaged in linear light.
+- **Measured ramp:** symbol glyphs measured for ink in JetBrains Mono, keeping ~20 evenly spaced tones.
+- **Bayer 4×4 blend** between the two glyphs around each tone, plus **hysteresis** (a cell keeps its glyph within a small margin) against shimmer.
+
+Videos are re-sampled once per decoded frame (`requestVideoFrameCallback`, falling back to `currentTime`) and pause while the tab is hidden or motion is reduced. A still picture redraws at ~12 fps for its slow drift, or holds the frame under reduced motion.
+
+Render modes: Characters, Braille, Tiles, Blocks; colour modes from true colour to monochrome; brightness/contrast/gamma and a backlight glow. Pointer effects: gas (`physics/FluidGasField.ts`, semi-Lagrangian advection with vorticity and plume spread), travelling ripples, drift, or the **lantern** (a lagged Gaussian light with a 12-point fading trail, per-cell grain, a warm colour shift and a little rim flicker). Cells go into `core/RenderGrid` (typed arrays) and `core/Rasterizer` draws them batched by colour and opacity.
 
 ## UI
 
-- `App.tsx` — layout, hotkeys (`Z` Zen, `S` settings, `Esc`), drag-and-drop of media onto the page.
-- `navigation/TopBar.tsx` — weather, the scene pill (appears on top-edge hover), Zen and settings buttons.
+- `App.tsx` — layout, hotkeys (`Z` Zen, `S` settings, `Esc`, `← →`/`[ ]` and `1`–`0` for scenes), drag-and-drop of media onto the page (into the slot you're viewing, else the first empty one).
+- `navigation/TopBar.tsx` — weather, the always-visible scene chip (‹ name n/10 ›; click for the full list, which also opens on top-edge hover), Zen and settings buttons.
 - `drawer/EdgeHoverDrawer.tsx` — all settings: animal tweaks, custom slot media and look, search, shortcuts, weather, display toggles, reset to defaults.
 - `widgets/`, `search/`, `shortcuts/`, `greeting/` — the productivity overlay.
 

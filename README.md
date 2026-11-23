@@ -60,7 +60,7 @@ Instead of static photos or cluttered promotional widgets, Pixora offers living 
 - **Wildlife Simulations** ported directly from [DesignerStephen1/ascii-animals](https://github.com/DesignerStephen1/ascii-animals).
 - **Custom ASCII Media Slots** equipped with an in-browser ASCII video & image engine.
 
-Every scene can be tuned in real-time, personalized with custom names, and switched instantly from a top-edge hover pill.
+Every scene can be tuned in real-time, personalized with custom names, and switched from the scene chip at the top (‹ name ›), the full list it opens, or the arrow and number keys.
 
 ---
 
@@ -90,6 +90,7 @@ Upload photos or looping videos directly to create custom ASCII art backgrounds:
 - **Real-Time Video ASCII Transcoding**: Hardware-accelerated frame sampling at 60 FPS converts video frames to ASCII with dynamic tone-mapping.
 - **Phosphor Backlight Glow**: Phosphor luminescence simulation replicates the nostalgic ambiance of vintage monochromatic CRT monitors.
 - **Custom Slot Naming**: Rename your custom slots (e.g. *"Cat in Leaves"*, *"Matrix Cyberpunk"*, *"Anime Ambient Loop"*). Names appear immediately on the top selection bar.
+- **Cleaner conversion**: each character cell averages its pixels in linear light, characters are chosen by their measured ink in the bundled font, neighbouring tones are blended with an ordered (Bayer) pattern, and cells keep their character unless another is clearly better, so video and drift don't shimmer.
 - **Render Modes**:
   - `Characters`: Classic ASCII density ramp (` .:-=+*#%@`).
   - `Braille`: High-density `2 × 4` dot matrices using Unicode Braille Patterns (`0x2800–0x28FF`).
@@ -104,6 +105,7 @@ Upload photos or looping videos directly to create custom ASCII art backgrounds:
 Pixora features a real-time 2D Navier-Stokes fluid physics simulation:
 
 - **Fluid Gas Advection**: The cursor acts as a source of momentum, creating billowing smoke clouds, curling vortices, and expanding plumes that disperse across your wallpaper.
+- **Lantern**: a warm pool of light follows your pointer with a short lag and a fading trail, lifting the picture out of its shadows (inspired by asciify's brightness hover).
 - **Concentric Traveling Ripples**: Switch to Ripple mode to see traveling water displacement waves that refract characters and wash across the screen with clicks and rapid cursor strokes.
 - **Fine-Tuned Flow Controls**:
   - **Flow Velocity / Speed** (`0.2x – 3.0x`): Dictates fluid advection transport speed and ripple travel time.
@@ -218,6 +220,8 @@ Once built, load the `dist/` directory as an unpacked extension in your browser.
 | :---: | :--- |
 | `Z` or `Esc` | Toggle **Zen Mode** (hides/reveals all UI widgets) |
 | `S` | Open / Close the **Tweaks & Settings Drawer** |
+| `←` `→` or `[` `]` | Previous / next **scene** |
+| `1`–`9`, `0` | Jump straight to scene 1–10 |
 | `/` | Immediately focus the **Central Search Bar** |
 | `Esc` | Clear search input / close drawer when open |
 | `Enter` | Execute search or navigate to typed URL |

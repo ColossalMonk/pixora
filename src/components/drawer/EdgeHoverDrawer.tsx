@@ -430,10 +430,11 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
                   <div className="pt-3 border-t border-white/10 space-y-4">
                     <div>
                       <label className="block text-xs font-medium text-slate-300 mb-2">Pointer Interaction Mode</label>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-4 gap-2">
                         {[
                           { id: 'gas', label: 'Gas Flow' },
                           { id: 'ripple', label: 'Ripple' },
+                          { id: 'lantern', label: 'Lantern' },
                           { id: 'none', label: 'Still' },
                         ].map(({ id, label }) => {
                           const isSelected =

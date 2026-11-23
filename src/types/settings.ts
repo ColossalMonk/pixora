@@ -20,7 +20,7 @@ export interface SearchEngine {
 
 export type CustomRenderMode = 'tiles' | 'characters' | 'braille' | 'blocks';
 export type CustomColorMode = 'full' | 'mono' | 'matrix' | 'amber' | 'cyberpunk';
-export type CustomPointerEffect = 'gas' | 'ripple' | 'drift' | 'none';
+export type CustomPointerEffect = 'gas' | 'ripple' | 'lantern' | 'drift' | 'none';
 
 export interface CustomImageConfig {
   name?: string;

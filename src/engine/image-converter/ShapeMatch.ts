@@ -32,7 +32,7 @@ const shapeCache = new Map<string, ShapeTable>();
  * Glyphs shape matching may choose: strokes, corners and blobs. Most letters
  * and digits are left out on purpose; they make a picture read like text.
  */
-const STROKE_GLYPHS = " .,'`-_~^:;!|/\\()[]{}<>=+*\"LJTVYX7vxoO0#@";
+const STROKE_GLYPHS = " .,'`-_~^:;!|/\\()[]{}<>=+*\"vxo#@";
 
 /** Light blur inside a 3×5 block, so a stroke one sub-cell off still matches. */
 function soften(src: Float32Array, so: number, dst: Float32Array, d0: number): void {

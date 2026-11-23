@@ -92,7 +92,8 @@ export function sampleLinear(
  * stripes, and contours get their strokes from shape matching (ShapeMatch.ts).
  * No letters either: they make a picture read like text.
  */
-const CANDIDATES = " .`',:;+*xo0%#&$@8";
+// Symbols only: letters and digits ($ 0 8 & %) read as text in flat areas.
+const CANDIDATES = " .`',:;=+*xo#@";
 
 export interface InkRamp {
   codes: Uint16Array; // glyph code points, lightest → darkest
@@ -185,7 +186,13 @@ export function pickGlyph(ramp: InkRamp, v: number, c: number, r: number, prev: 
     if (ink[mid] <= v) lo = mid;
     else hi = mid;
   }
-  const f = (v - ink[lo]) / Math.max(1e-6, ink[hi] - ink[lo]);
+  // Dither only near the midpoint between two glyphs; elsewhere snap to the
+  // nearer one, so flat areas settle on one character instead of a pattern.
+  // Glyphs far apart in ink (o → # → @) never dither: mixing them reads as a
+  // woven pattern rather than a shade.
+  const gap = ink[hi] - ink[lo];
+  const t = (v - ink[lo]) / Math.max(1e-6, gap);
+  const f = gap > 0.1 ? (t >= 0.5 ? 1 : 0) : Math.min(1, Math.max(0, (t - 0.5) * 3.5 + 0.5));
   const pick = f > BAYER4[(r & 3) * 4 + (c & 3)] ? hi : lo;
   if (prev >= 0 && prev <= last && prev !== pick && Math.abs(ink[prev] - v) <= Math.abs(ink[pick] - v) + margin) {
     return prev;

@@ -37,11 +37,11 @@ The media lives in IndexedDB (`services/imageStore.ts`, one entry per slot). `im
 
 - **Linear-light supersampling:** 3×3 (video 2×2) pixels per sample, averaged in linear light.
 - **Measured ramp:** symbol glyphs measured for ink in JetBrains Mono, keeping ~20 evenly spaced tones.
-- **Bayer 4×4 blend** between the two glyphs around each tone, plus **hysteresis** (a cell keeps its glyph within a small margin) against shimmer. The flat-area ramp has no directional glyphs, which read as stripes.
+- **Bayer 4×4 blend** near the midpoint between two glyphs of similar ink, plus **hysteresis** (a cell keeps its glyph within a small margin) against shimmer. Glyphs far apart in ink (`o # @`) snap instead of dithering, which would read as a woven pattern. The ramp is symbols only: no directional glyphs (stripes in skies) and no letters or digits (`$ 0 8 & %` read as text).
 
 `image-converter/ShapeMatch.ts` adds structure:
 
-- **Shape matching:** Characters mode samples 3×5 sub-cells per cell. Each stroke-like glyph's 3×5 coverage is measured once at the real cell size. Where a cell has contrast, the glyph is picked by tone error plus (1 − correlation) of the ink layouts, among glyphs of similar ink. Letters are excluded so pictures don't read like text.
+- **Shape matching:** Characters mode samples 3×5 sub-cells per cell. Each stroke-like glyph's 3×5 coverage is measured once at the real cell size. Where a cell has contrast, the glyph is picked by tone error plus (1 − correlation) of the ink layouts, among glyphs of similar ink. Letters and digits are excluded so pictures don't read like text, and so long edges don't become columns of `J` or `L`.
 - **Edge outlines:** Sobel gradients feed a structure tensor that is blurred twice, gated by coherence and thresholded at mean + 1.1σ, then thinned by non-maximum suppression. The ridges are inked in, scaled by the *Edge Outlines* slider. Video refreshes edges every other frame.
 
 Measured at 1440×900 in Chrome: a still picture builds in about 24 ms (once), a video frame in about 11 ms, and `render()` takes about 2.5 ms.

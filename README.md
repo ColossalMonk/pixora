@@ -91,7 +91,7 @@ Upload photos or looping videos directly to create custom ASCII art backgrounds:
 - **Phosphor Backlight Glow**: Phosphor luminescence simulation replicates the nostalgic ambiance of vintage monochromatic CRT monitors.
 - **Custom Slot Naming**: Rename your custom slots (e.g. *"Cat in Leaves"*, *"Matrix Cyberpunk"*, *"Anime Ambient Loop"*). Names appear immediately on the top selection bar.
 - **Cleaner conversion**: each character cell averages its pixels in linear light, characters are chosen by their measured ink in the bundled font, neighbouring tones are blended with an ordered (Bayer) pattern, and cells keep their character unless another is clearly better, so video and drift don't shimmer.
-- **Shape-matched strokes**: in Characters mode every cell is read as 3×5 sub-cells; where the picture has a contour, the character whose shape matches it is used (`/ \ | _ ( ) L J 7`…), so outlines read as real strokes while flat areas keep calm shading.
+- **Shape-matched strokes**: in Characters mode every cell is read as 3×5 sub-cells; where the picture has a contour, the character whose shape matches it is used (`/ \ | _ ( ) [ ] < >`…), so outlines read as real strokes while flat areas keep calm shading.
 - **Edge Outlines** slider: finds coherent contours (structure tensor, thinned to one sample) and inks them in for a sketch-like outline.
 - **GPU drawing**: custom slots draw with WebGL2 (one instanced draw per frame, about 4× faster than canvas 2D on a full picture), falling back to canvas 2D automatically.
 - **Render Modes**:

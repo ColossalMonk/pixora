@@ -80,6 +80,8 @@ All animal behaviors, flocking algorithms, and vector shaders are ported directl
 | **Cranes** | Majestic long-range V-formations with synchronized wingbeat cycles and altitude climbs when startled. |
 | **Crabs** | Sideways coordinate scuttling, claw waving, and defensive shell tucking when approached. |
 
+**Live weather & time of day.** The animal scenes follow your real weather and sun: rain streaks slanted by the wind (splash rings on the koi and frog ponds), snow, fog that fades distant animals, storms with lightning, and stars on clear nights. The sky shifts from deep night blue to golden dawn and dusk with your sunrise and sunset, and the wind blows butterflies, dragonflies and cranes off course. Settings → *Weather & Time* has a switch and a preview for any weather or time of day. (Real weather needs the weather widget on; without it, scenes still follow the clock.)
+
 ---
 
 ### 2. Real-Time Video & Image ASCII Engine

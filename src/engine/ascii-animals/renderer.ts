@@ -13,6 +13,7 @@ import { INK_BODY, INK_DARK, INK_GLASS, INK_GLOW, INK_LIT, INK_SCALE, INK_SHIMME
 import { clamp, hash3 } from "./math";
 import { GlyphGL } from "../core/GlyphGL";
 import { RenderGrid } from "../core/RenderGrid";
+import { Atmosphere, type AtmosphereCanvas } from "./atmosphere";
 
 const ALPHA_LEVELS = 6;
 export type Theme = "light" | "dark";
@@ -252,6 +253,23 @@ export class AsciiRenderer {
   /** Called once if the WebGL context is lost and drawing falls back to 2D. */
   onGpuLost: (() => void) | null = null;
 
+  // Pixora: live weather and time of day (null = the scene as designed).
+  atmosphere: Atmosphere | null = null;
+  /** Colour far creatures fade toward: the backdrop's middle. */
+  private fadeTo: RGB = PALETTES.light.background;
+  private skyKey = "";
+  private readonly weatherCanvas: AtmosphereCanvas = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const r = this;
+    return {
+      get width() { return r.width; },
+      get height() { return r.height; },
+      get theme() { return r.theme; },
+      line: (x0, y0, x1, y1, color, fog, tip) => r.line(x0, y0, x1, y1, color, fog, tip),
+      dot: (x, y, glyph, color, fog) => r.dot(x, y, glyph, color, fog),
+    };
+  })();
+
   constructor(private canvas: HTMLCanvasElement, public tuning: Tuning) {
     const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) throw new Error("2D canvas unavailable");
@@ -314,14 +332,20 @@ export class AsciiRenderer {
 
   /** Apply the Hue shift knob to a colour. */
   private turn(r: number, g: number, b: number): RGB {
-    if (!this.hueOn) return [r, g, b];
-    const m = this.hue;
-    return [m[0] * r + m[1] * g + m[2] * b, m[3] * r + m[4] * g + m[5] * b, m[6] * r + m[7] * g + m[8] * b];
+    let out: RGB = [r, g, b];
+    if (this.hueOn) {
+      const m = this.hue;
+      out = [m[0] * r + m[1] * g + m[2] * b, m[3] * r + m[4] * g + m[5] * b, m[6] * r + m[7] * g + m[8] * b];
+    }
+    return this.atmosphere ? this.atmosphere.grade(out, this.theme) : out;
   }
 
   /** Blend a colour toward the background by f (0 → colour, 1 → background), packed 0xRRGGBB. */
   private fade(r: number, g: number, b: number, f: number) {
-    const [br, bg, bb] = this.palette.background;
+    // Fog pulls everything further toward the background.
+    const fog = this.atmosphere?.fogAmount ?? 0;
+    if (fog > 0) f = f + (1 - f) * fog;
+    const [br, bg, bb] = this.fadeTo;
     return pack(r + (br - r) * f, g + (bg - g) * f, b + (bb - b) * f);
   }
 
@@ -361,7 +385,18 @@ export class AsciiRenderer {
     if (!g) return;
     const { width: W, height: H, dpr, cw, ch } = this;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.fillStyle = rgb(...this.palette.background);
+    if (this.atmosphere) {
+      // Sky for the time of day: top → bottom.
+      const [top, bottom] = this.atmosphere.backdrop(this.palette.background, this.theme);
+      const grad = g.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, rgb(...top));
+      grad.addColorStop(1, rgb(...bottom));
+      g.fillStyle = grad;
+      this.fadeTo = [(top[0] + bottom[0]) / 2, (top[1] + bottom[1]) / 2, (top[2] + bottom[2]) / 2];
+    } else {
+      g.fillStyle = rgb(...this.palette.background);
+      this.fadeTo = this.palette.background;
+    }
     g.fillRect(0, 0, W, H);
     const [gr, gg, gb, ga] = this.palette.grid;
     paintGrid(g, W, H, cw, ch, dpr, `rgba(${gr},${gg},${gb},${(ga * this.tuning.grid).toFixed(3)})`);
@@ -377,13 +412,32 @@ export class AsciiRenderer {
     flock.events.length = 0;
     this.diffuse(dt);
 
-    this.cellFlag.fill(CELL_NONE);
+    const atmos = this.atmosphere;
+    if (atmos) {
+      atmos.update(dt, this.width, this.height);
+      // Repaint the sky when the light, glow or weather has visibly moved on.
+      const { light, warm, kind } = atmos.input;
+      const key = `${Math.round(light * 40)}|${Math.round(warm * 40)}|${kind}|${this.theme}`;
+      if (key !== this.skyKey) {
+        this.skyKey = key;
+        this.paintBackground();
+      }
+    }
+
     const animal = flock.animal;
+    this.cellFlag.fill(CELL_NONE);
+    // Weather first, so the animals sit in front of it.
+    if (!animal.underwater) atmos?.draw(this.weatherCanvas, !!animal.water);
     if (animal.drawAll) animal.drawAll(flock, this.pen);
     else if (animal.draw) for (const c of flock.creatures) animal.draw(c, this.pen, flock);
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(this.bg, 0, 0);
+    if (atmos && atmos.flash > 0.01 && this.theme === "dark") {
+      // Lightning lifts the whole sky for a moment.
+      ctx.fillStyle = `rgba(200,210,255,${(atmos.flash * 0.16).toFixed(3)})`;
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     this.drawTrail(flock.time);

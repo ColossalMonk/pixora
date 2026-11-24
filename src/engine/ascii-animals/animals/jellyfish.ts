@@ -82,6 +82,7 @@ export const jellyfish: Animal<Jelly> = {
   scale: 1.6,
   speed: 55,
   trail: { light: [200, 80, 170], dark: [255, 130, 214] },
+  underwater: true,
 
   create: (c) => ({ ...c, phase: rand(0, TAU), squeeze: 0, turn: 0 }),
 

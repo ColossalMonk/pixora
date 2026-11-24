@@ -80,6 +80,8 @@ export interface UserSettings {
   reducedMotion: boolean;
   powerMode: PowerMode;
   appearance: Appearance;
+  /** Animal scenes follow the real weather and time of day. */
+  liveWeather: boolean;
 
   // Productivity
   userName: string;

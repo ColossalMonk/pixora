@@ -139,6 +139,7 @@ export const koi: Animal<Koi> = {
   scale: 1.15,
   speed: 50,
   trail: { light: [90, 140, 190], dark: [110, 170, 220] },
+  water: true,
 
   create: (c) => ({
     ...c,

@@ -15,6 +15,24 @@ export function guessCity(): string {
   }
 }
 
+/** WMO weather code → 0..1 heaviness (light drizzle 0.3 … violent showers / heavy snow 1). */
+export function weatherIntensity(code: number): number {
+  const table: Record<number, number> = {
+    45: 0.6, 48: 0.8,
+    51: 0.25, 53: 0.4, 55: 0.55, 56: 0.4, 57: 0.6,
+    61: 0.45, 63: 0.7, 65: 1, 66: 0.55, 67: 0.9,
+    71: 0.4, 73: 0.7, 75: 1, 77: 0.3,
+    80: 0.5, 81: 0.75, 82: 1, 85: 0.6, 86: 1,
+    95: 0.85, 96: 0.95, 99: 1,
+  };
+  return table[code] ?? 0;
+}
+
+/** Wind blowing FROM `fromDeg` (meteorological) → its left/right part on screen, km/h (+ blows toward the right, i.e. east). */
+export function windAcross(kmh: number, fromDeg: number): number {
+  return -Math.sin((fromDeg * Math.PI) / 180) * kmh;
+}
+
 export interface WeatherData {
   city: string;
   temp: number;
@@ -29,9 +47,14 @@ export interface WeatherData {
   /** Today's sunrise / sunset, local ISO time (drives time-of-day shading). */
   sunrise?: string;
   sunset?: string;
+  /** 0..1 how heavy the rain, snow or fog is (from the weather code). */
+  intensity?: number;
+  /** Wind at 10 m, km/h, and the direction it blows FROM, degrees (meteorological). */
+  windKmh?: number;
+  windFrom?: number;
 }
 
-const CACHE_KEY = 'pixora_weather_cache_v8';
+const CACHE_KEY = 'pixora_weather_cache_v9';
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 const NCR_ALIASES = ['dadri', 'dādri', 'noida', 'greater noida', 'ghaziabad', 'delhi', 'new delhi', 'calcutta', 'kolkata'];
@@ -106,7 +129,7 @@ export class WeatherService {
       // Fetch live weather from Open-Meteo
       const tempParam = unit === 'fahrenheit' ? '&temperature_unit=fahrenheit' : '';
       const weatherRes = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,is_day,weather_code&daily=sunrise,sunset&timezone=auto&forecast_days=1${tempParam}`
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,is_day,weather_code,wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&daily=sunrise,sunset&timezone=auto&forecast_days=1${tempParam}`
       );
       const data = await weatherRes.json();
 
@@ -125,6 +148,9 @@ export class WeatherService {
         timestamp: Date.now(),
         key: requestKey,
         kind: this.kindOf(code),
+        intensity: weatherIntensity(code),
+        windKmh: Number(data.current.wind_speed_10m) || 0,
+        windFrom: Number(data.current.wind_direction_10m) || 0,
         sunrise: data.daily?.sunrise?.[0],
         sunset: data.daily?.sunset?.[0],
       };

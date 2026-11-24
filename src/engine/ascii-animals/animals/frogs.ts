@@ -125,6 +125,7 @@ export const frogs: Animal<Frog> = {
   scale: 0.95,
   speed: 80,
   trail: { light: [80, 150, 170], dark: [110, 200, 220] },
+  water: true,
 
   create: (c) => ({ ...c, leaping: false, until: 0, aim: 0, s: 0, dur: 0.5, fromX: 0, fromY: 0, toX: 0, toY: 0 }),
 

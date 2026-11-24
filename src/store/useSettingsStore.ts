@@ -37,6 +37,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   reducedMotion: false,
   powerMode: 'auto',
   appearance: 'system',
+  liveWeather: true,
 
   userName: '',
   searchEngine: 'google',
@@ -119,6 +120,7 @@ interface SettingsStore extends UserSettings {
   setReducedMotion: (reduced: boolean) => void;
   setPowerMode: (mode: PowerMode) => void;
   setAppearance: (appearance: Appearance) => void;
+  setLiveWeather: (on: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
@@ -178,6 +180,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         reducedMotion: next.reducedMotion,
         powerMode: next.powerMode,
         appearance: next.appearance,
+        liveWeather: next.liveWeather,
         userName: next.userName,
         searchEngine: next.searchEngine,
         customSearchUrl: next.customSearchUrl,
@@ -260,4 +263,5 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   setReducedMotion: (reducedMotion) => get().updateSettings({ reducedMotion }),
   setPowerMode: (powerMode) => get().updateSettings({ powerMode }),
   setAppearance: (appearance) => get().updateSettings({ appearance }),
+  setLiveWeather: (liveWeather) => get().updateSettings({ liveWeather }),
 }));

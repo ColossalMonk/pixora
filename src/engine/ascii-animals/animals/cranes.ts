@@ -188,6 +188,7 @@ export const cranes: Animal<Crane> = {
   scale: 1.45,
   speed: 85,
   trail: { light: [150, 152, 170], dark: [200, 204, 226] },
+  wind: 0.35,
 
   create: (c) => ({ ...c, phase: rand(0, TAU), pace: 0.8 + 0.4 * hash3(c.id, 5, 9), glide: 0, glideUntil: 0 }),
 

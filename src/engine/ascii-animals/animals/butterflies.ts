@@ -115,6 +115,7 @@ export const butterflies: Animal<Butterfly> = {
   scale: 1,
   speed: 90,
   trail: { light: [70, 118, 226], dark: [96, 156, 255] },
+  wind: 1,
 
   create: (c) => ({ ...c, phase: rand(0, TAU), open: 1, glide: 0, glideUntil: 0, flutterX: 0, flutterY: 0 }),
 

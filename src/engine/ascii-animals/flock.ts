@@ -139,6 +139,12 @@ export interface Animal<C extends Creature = Creature> {
   speed: number;
   /** Trail colour per theme. */
   trail: { light: RGB; dark: RGB };
+  /** Pixora: how much wind pushes it, 0 (underwater, on the ground) → 1 (light fliers). */
+  wind?: number;
+  /** Pixora: rain lands on water here as ripples in the trail field. */
+  water?: boolean;
+  /** Pixora: deep underwater: no rain, snow or stars, only the time-of-day tint. */
+  underwater?: boolean;
 
   /** Add this animal's own fields to a fresh creature. */
   create(c: Creature, flock: Flock<C>): C;
@@ -183,6 +189,8 @@ export class Flock<C extends Creature = Creature> {
   base = 120;
   /** Scratch acceleration the steering helpers add into. */
   readonly acc = { x: 0, y: 0 };
+  /** Pixora: live wind along the screen, px/s (scaled by each animal's exposure). */
+  windX = 0;
 
   private nextId = 1;
 
@@ -391,7 +399,8 @@ export class Flock<C extends Creature = Creature> {
       c.vy *= cap / speed;
       speed = cap;
     }
-    c.x += c.vx * dt;
+    // Wind drifts exposed creatures sideways (more when near: parallax), without changing their course.
+    c.x += (c.vx + this.windX * (this.animal.wind ?? 0) * (0.5 + 0.5 * c.depth)) * dt;
     c.y += c.vy * dt;
     return speed;
   }

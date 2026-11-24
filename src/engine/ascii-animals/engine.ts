@@ -1,6 +1,7 @@
 import { ANIMALS, type AnimalKey } from "./animals";
 import { Flock, type Animal, type Tuning } from "./flock";
 import { AsciiRenderer, type Theme } from "./renderer";
+import { Atmosphere, type AtmosphereInput } from "./atmosphere";
 
 const STEP = 1 / 60;
 
@@ -110,6 +111,19 @@ export class AnimalEngine {
     return this.renderer.usingGPU;
   }
 
+  /** Pixora: live weather and time of day; null shows the scene as designed. */
+  setAtmosphere(input: AtmosphereInput | null) {
+    if (!input) {
+      this.renderer.atmosphere = null;
+      this.flock.windX = 0;
+    } else {
+      if (!this.renderer.atmosphere) this.renderer.atmosphere = new Atmosphere();
+      this.renderer.atmosphere.set(input);
+    }
+    this.renderer.restyle();
+    if (this.still) this.drawStill();
+  }
+
   /** Pixora: low power (30 fps cap, 1x pixel density). */
   setLowPower(on: boolean) {
     if (on === this.lowPower) return;
@@ -195,6 +209,15 @@ export class AnimalEngine {
     this.last = now;
     this.acc += dt;
     let steps = 0;
+    const atmos = this.renderer.atmosphere;
+    this.flock.windX = atmos ? atmos.wind : 0;
+    // Rain on water: drops land as small ripples in the trail field.
+    if (atmos && this.animal.water && (atmos.input.kind === "rain" || atmos.input.kind === "storm")) {
+      const rate = (6 + 30 * atmos.input.intensity) * dt * ((this.flock.width * this.flock.height) / (1440 * 900));
+      for (let n = rate + Math.random(); n >= 1; n--) {
+        this.flock.events.push({ x: Math.random() * this.flock.width, y: Math.random() * this.flock.height, radius: 1, amount: 0.55 });
+      }
+    }
     while (this.acc >= STEP && steps < MAX_STEPS) {
       this.flock.step(STEP);
       this.acc -= STEP;

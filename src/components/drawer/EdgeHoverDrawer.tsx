@@ -17,6 +17,7 @@ import {
   Monitor,
 } from 'lucide-react';
 import { usePowerReason } from '../../services/power';
+import { useLiveStore, type TimePreview, type WeatherPreview } from '../../store/useLiveStore';
 import type { Appearance, PowerMode } from '../../types/settings';
 
 /** A row of mutually exclusive buttons (System / Dark / Light, Auto / On / Off). */
@@ -49,6 +50,47 @@ function Segmented<T extends string>({ value, options, onChange, label }: {
     </div>
   );
 }
+
+/** A row of small toggle chips (weather and time previews). */
+function Chips<T extends string>({ value, options, onChange, label }: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+  label: string;
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => onChange(o.value)}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all duration-200 cursor-pointer active:scale-95 ${
+              on
+                ? 'bg-sky-500/20 border-sky-400/50 text-sky-300'
+                : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+const WEATHER_WORDS: Record<string, string> = {
+  clear: 'Clear',
+  cloudy: 'Cloudy',
+  fog: 'Fog',
+  rain: 'Rain',
+  snow: 'Snow',
+  storm: 'Storm',
+};
 
 const POWER_NOTE: Record<string, string> = {
   manual: 'On: 30 fps and standard sharpness, to save battery.',
@@ -127,12 +169,19 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
     setAppearance,
     powerMode,
     setPowerMode,
+    liveWeather,
+    setLiveWeather,
     shortcuts,
     addShortcut,
     removeShortcut,
   } = useSettingsStore();
 
   const powerReason = usePowerReason();
+  const liveWeatherData = useLiveStore((s) => s.weather);
+  const weatherPreview = useLiveStore((s) => s.weatherPreview);
+  const timePreview = useLiveStore((s) => s.timePreview);
+  const setWeatherPreview = useLiveStore((s) => s.setWeatherPreview);
+  const setTimePreview = useLiveStore((s) => s.setTimePreview);
 
   // Check which custom image slots have media in IndexedDB
   const checkCustomImages = async () => {
@@ -1123,6 +1172,66 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
+              </div>
+
+              {/* Weather & Time (animal scenes) */}
+              <div className="space-y-3 pt-3 border-t border-white/10">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono">
+                  Weather & Time
+                </h3>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-300">Live weather on animal scenes</span>
+                  <input
+                    type="checkbox"
+                    checked={liveWeather}
+                    onChange={(e) => setLiveWeather(e.target.checked)}
+                    className="accent-teal-400 w-4 h-4 rounded"
+                  />
+                </div>
+                <p className="text-[11px] leading-snug text-slate-500">
+                  {!liveWeather
+                    ? 'Off: scenes look as designed, whatever the weather.'
+                    : liveWeatherData?.kind
+                      ? `Now: ${WEATHER_WORDS[liveWeatherData.kind] ?? liveWeatherData.condition}${
+                          liveWeatherData.windKmh ? `, wind ${Math.round(liveWeatherData.windKmh)} km/h` : ''
+                        } in ${liveWeatherData.city}. Rain, snow, fog and storms show up in the scene; night, dawn and dusk follow your sunrise and sunset.`
+                      : 'Turn on the weather widget to follow real rain, snow and wind. Time of day follows your clock.'}
+                </p>
+                {liveWeather && (
+                  <>
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] uppercase tracking-wider text-slate-500 font-mono">Preview weather</span>
+                      <Chips<WeatherPreview>
+                        label="Preview weather"
+                        value={weatherPreview}
+                        onChange={setWeatherPreview}
+                        options={[
+                          { value: 'live', label: 'Live' },
+                          { value: 'clear', label: 'Clear' },
+                          { value: 'rain', label: 'Rain' },
+                          { value: 'storm', label: 'Storm' },
+                          { value: 'snow', label: 'Snow' },
+                          { value: 'fog', label: 'Fog' },
+                        ]}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] uppercase tracking-wider text-slate-500 font-mono">Preview time</span>
+                      <Chips<TimePreview>
+                        label="Preview time of day"
+                        value={timePreview}
+                        onChange={setTimePreview}
+                        options={[
+                          { value: 'live', label: 'Live' },
+                          { value: 'dawn', label: 'Dawn' },
+                          { value: 'day', label: 'Day' },
+                          { value: 'dusk', label: 'Dusk' },
+                          { value: 'night', label: 'Night' },
+                        ]}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Display & Motion */}

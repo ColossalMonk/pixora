@@ -10,6 +10,9 @@ import { GlyphGL } from '../../engine/core/GlyphGL';
 import { Power, usePowerReason } from '../../services/power';
 import { registerCapturer } from '../../services/capture';
 import type { ResolvedTheme } from '../../services/theme';
+import { useLiveStore } from '../../store/useLiveStore';
+import { atmosphereNow } from '../../services/atmosphereInput';
+import type { AtmosphereInput } from '../../engine/ascii-animals/atmosphere';
 
 interface AsciiCanvasProps {
   focusRef?: React.RefObject<HTMLElement | null>;
@@ -37,7 +40,13 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true,
     fontSize,
     reducedMotion,
     powerMode,
+    liveWeather,
   } = useSettingsStore();
+  const weather = useLiveStore((s) => s.weather);
+  const weatherPreview = useLiveStore((s) => s.weatherPreview);
+  const timePreview = useLiveStore((s) => s.timePreview);
+  /** Current weather and light for the animal scenes (null: as designed). */
+  const atmosRef = useRef<AtmosphereInput | null>(null);
 
   const lowPower = usePowerReason() !== null;
   const lowPowerRef = useRef(lowPower);
@@ -71,6 +80,7 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true,
         });
         engine.onFrameCost = (ms) => Power.reportFrame(ms);
         engine.setLowPower(lowPowerRef.current);
+        engine.setAtmosphere(atmosRef.current);
         animalEngineRef.current = engine;
         // Dev only: lets the console inspect the live engine.
         if (location.hostname === 'localhost') (window as unknown as { __pixoraAnimals?: AnimalEngine }).__pixoraAnimals = engine;
@@ -306,6 +316,18 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true,
       };
     }
   }, [isLoaded, activeScene, isAnimal, fontSize, reducedMotion]);
+
+  // Live weather and time of day: refresh now, and every 30 s as the light changes.
+  useEffect(() => {
+    const apply = () => {
+      atmosRef.current = liveWeather ? atmosphereNow(weather, weatherPreview, timePreview) : null;
+      animalEngineRef.current?.setAtmosphere(atmosRef.current);
+    };
+    apply();
+    if (!liveWeather) return;
+    const id = window.setInterval(apply, 30_000);
+    return () => window.clearInterval(id);
+  }, [liveWeather, weather, weatherPreview, timePreview, isAnimal, activeScene]);
 
   // Low power and theme apply live, without restarting the scene.
   useEffect(() => {

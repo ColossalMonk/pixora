@@ -121,6 +121,7 @@ export const dragonflies: Animal<Dragonfly> = {
   scale: 2.1,
   speed: 70,
   trail: { light: [40, 160, 100], dark: [140, 255, 190] },
+  wind: 0.5,
 
   create: (c) => ({ ...c, phase: rand(0, TAU), mode: "hover" as const, until: 0, aim: 0 }),
 

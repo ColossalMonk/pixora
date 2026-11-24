@@ -82,6 +82,8 @@ export interface UserSettings {
   appearance: Appearance;
   /** Animal scenes follow the real weather and time of day. */
   liveWeather: boolean;
+  /** Animal scenes show their setting (pond, shore, reeds, meadow…). */
+  habitats: boolean;
 
   // Productivity
   userName: string;

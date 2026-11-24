@@ -41,7 +41,10 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true,
     reducedMotion,
     powerMode,
     liveWeather,
+    habitats,
   } = useSettingsStore();
+  const habitatsRef = useRef(habitats);
+  habitatsRef.current = habitats;
   const weather = useLiveStore((s) => s.weather);
   const weatherPreview = useLiveStore((s) => s.weatherPreview);
   const timePreview = useLiveStore((s) => s.timePreview);
@@ -80,6 +83,7 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true,
         });
         engine.onFrameCost = (ms) => Power.reportFrame(ms);
         engine.setLowPower(lowPowerRef.current);
+        engine.setHabitats(habitatsRef.current);
         engine.setAtmosphere(atmosRef.current);
         animalEngineRef.current = engine;
         // Dev only: lets the console inspect the live engine.
@@ -328,6 +332,10 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true,
     const id = window.setInterval(apply, 30_000);
     return () => window.clearInterval(id);
   }, [liveWeather, weather, weatherPreview, timePreview, isAnimal, activeScene]);
+
+  useEffect(() => {
+    animalEngineRef.current?.setHabitats(habitats);
+  }, [habitats, isAnimal, activeScene]);
 
   // Low power and theme apply live, without restarting the scene.
   useEffect(() => {

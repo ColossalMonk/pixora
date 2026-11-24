@@ -171,6 +171,8 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
     setPowerMode,
     liveWeather,
     setLiveWeather,
+    habitats,
+    setHabitats,
     shortcuts,
     addShortcut,
     removeShortcut,
@@ -1174,11 +1176,20 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
                 </div>
               </div>
 
-              {/* Weather & Time (animal scenes) */}
+              {/* World: habitats, weather and time (animal scenes) */}
               <div className="space-y-3 pt-3 border-t border-white/10">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono">
-                  Weather & Time
+                  World
                 </h3>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-300">Habitats (pond, shore, reeds, meadow…)</span>
+                  <input
+                    type="checkbox"
+                    checked={habitats}
+                    onChange={(e) => setHabitats(e.target.checked)}
+                    className="accent-teal-400 w-4 h-4 rounded"
+                  />
+                </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-300">Live weather on animal scenes</span>
                   <input

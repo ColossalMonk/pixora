@@ -14,6 +14,7 @@ import { clamp, hash3 } from "./math";
 import { GlyphGL } from "../core/GlyphGL";
 import { RenderGrid } from "../core/RenderGrid";
 import { Atmosphere, type AtmosphereCanvas } from "./atmosphere";
+import { HABITATS, seeded, type HabitatPainter } from "./habitats";
 
 const ALPHA_LEVELS = 6;
 export type Theme = "light" | "dark";
@@ -255,6 +256,10 @@ export class AsciiRenderer {
 
   // Pixora: live weather and time of day (null = the scene as designed).
   atmosphere: Atmosphere | null = null;
+  /** Pixora: paint the animal's habitat (pond, shore, reeds…) into the background. */
+  habitats = false;
+  /** Which habitat to paint (defaults to the animal's own; mixed scenes set their own). */
+  habitatKey: string | null = null;
   /** Colour far creatures fade toward: the backdrop's middle. */
   private fadeTo: RGB = PALETTES.light.background;
   private skyKey = "";
@@ -400,7 +405,38 @@ export class AsciiRenderer {
     g.fillRect(0, 0, W, H);
     const [gr, gg, gb, ga] = this.palette.grid;
     paintGrid(g, W, H, cw, ch, dpr, `rgba(${gr},${gg},${gb},${(ga * this.tuning.grid).toFixed(3)})`);
+    this.paintHabitat(g);
     this.paintCalm();
+  }
+
+  /** Pixora: the animal's setting, drawn on the cell grid into the cached background. */
+  private paintHabitat(g: CanvasRenderingContext2D) {
+    const key = this.habitatKey ?? this.animal?.key;
+    const habitat = this.habitats && key ? HABITATS[key] : undefined;
+    if (!habitat) return;
+    const { cw, ch, cols, rows, dpr } = this;
+    const light = this.theme === "light";
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.font = `600 ${Math.round(ch * 0.74)}px ${this.fontFamily}`;
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    let seed = 0;
+    for (const ch2 of key!) seed = (seed * 31 + ch2.charCodeAt(0)) | 0;
+    const painter: HabitatPainter = {
+      cols,
+      rows,
+      theme: this.theme,
+      rand: seeded(seed ^ (cols * 7919 + rows)),
+      put: (c, r, glyph, color, alpha) => {
+        if (c < 0 || r < 0 || c >= cols || r >= rows) return;
+        // On white, the same colours read as deeper ink.
+        const k = light ? 0.55 : 1;
+        const a = Math.min(0.75, alpha * (light ? 1.5 : 1.6));
+        g.fillStyle = `rgba(${Math.round(color[0] * k)},${Math.round(color[1] * k)},${Math.round(color[2] * k)},${a.toFixed(3)})`;
+        g.fillText(glyph, c * cw + cw / 2, r * ch + ch / 2 + 1);
+      },
+    };
+    habitat(painter);
   }
 
   render(flock: Flock<any>, dt: number) {

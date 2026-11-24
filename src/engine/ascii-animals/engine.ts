@@ -124,6 +124,14 @@ export class AnimalEngine {
     if (this.still) this.drawStill();
   }
 
+  /** Pixora: show the animal's habitat behind it. */
+  setHabitats(on: boolean) {
+    if (on === this.renderer.habitats) return;
+    this.renderer.habitats = on;
+    this.renderer.restyle();
+    if (this.still) this.drawStill();
+  }
+
   /** Pixora: low power (30 fps cap, 1x pixel density). */
   setLowPower(on: boolean) {
     if (on === this.lowPower) return;

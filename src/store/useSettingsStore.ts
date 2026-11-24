@@ -38,6 +38,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   powerMode: 'auto',
   appearance: 'system',
   liveWeather: true,
+  habitats: true,
 
   userName: '',
   searchEngine: 'google',
@@ -121,6 +122,7 @@ interface SettingsStore extends UserSettings {
   setPowerMode: (mode: PowerMode) => void;
   setAppearance: (appearance: Appearance) => void;
   setLiveWeather: (on: boolean) => void;
+  setHabitats: (on: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
@@ -181,6 +183,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         powerMode: next.powerMode,
         appearance: next.appearance,
         liveWeather: next.liveWeather,
+        habitats: next.habitats,
         userName: next.userName,
         searchEngine: next.searchEngine,
         customSearchUrl: next.customSearchUrl,
@@ -264,4 +267,5 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   setPowerMode: (powerMode) => get().updateSettings({ powerMode }),
   setAppearance: (appearance) => get().updateSettings({ appearance }),
   setLiveWeather: (liveWeather) => get().updateSettings({ liveWeather }),
+  setHabitats: (habitats) => get().updateSettings({ habitats }),
 }));

@@ -12,7 +12,49 @@ import {
   Layers,
   Video,
   Image as ImageIcon,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
+import { usePowerReason } from '../../services/power';
+import type { Appearance, PowerMode } from '../../types/settings';
+
+/** A row of mutually exclusive buttons (System / Dark / Light, Auto / On / Off). */
+function Segmented<T extends string>({ value, options, onChange, label }: {
+  value: T;
+  options: { value: T; label: string; icon?: React.ReactNode }[];
+  onChange: (v: T) => void;
+  label: string;
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => onChange(o.value)}
+            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer active:scale-95 ${
+              on ? 'bg-teal-400 text-slate-950 shadow-md' : 'text-slate-300 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            {o.icon}
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+const POWER_NOTE: Record<string, string> = {
+  manual: 'On: 30 fps and standard sharpness, to save battery.',
+  battery: 'On now: running on battery.',
+  slow: 'On now: this machine was struggling to keep up.',
+};
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { CATALOG } from '../../data/catalog';
 import { CustomSlotId } from '../../types/environment';
@@ -81,10 +123,16 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
     setFontSize,
     reducedMotion,
     setReducedMotion,
+    appearance,
+    setAppearance,
+    powerMode,
+    setPowerMode,
     shortcuts,
     addShortcut,
     removeShortcut,
   } = useSettingsStore();
+
+  const powerReason = usePowerReason();
 
   // Check which custom image slots have media in IndexedDB
   const checkCustomImages = async () => {
@@ -165,7 +213,7 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,video/mp4,video/webm,video/ogg"
+        accept="image/*,image/gif,image/webp,video/mp4,video/webm,video/ogg"
         className="hidden"
         onChange={handleFileUpload}
       />
@@ -181,7 +229,7 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
       {/* ── Main Slide-Over Drawer ── */}
       <aside
         ref={drawerRef}
-        className={`fixed top-0 right-0 bottom-0 w-[410px] max-w-[92vw] z-50 flex flex-col bg-[#0c0d12]/95 backdrop-blur-2xl border-l border-white/10 shadow-2xl text-slate-200 transition-transform duration-300 ease-out select-none ${
+        className={`fixed top-0 right-0 bottom-0 w-[410px] max-w-[92vw] z-50 flex flex-col bg-surface/95 backdrop-blur-2xl border-l border-white/10 shadow-2xl text-slate-200 transition-transform duration-300 ease-out select-none ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -1082,6 +1130,39 @@ export const EdgeHoverDrawer: React.FC<EdgeHoverDrawerProps> = ({ isOpen, onClos
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono">
                   Display & Performance
                 </h3>
+                <div className="space-y-1.5">
+                  <span className="text-xs text-slate-300">Theme</span>
+                  <Segmented<Appearance>
+                    label="Theme"
+                    value={appearance}
+                    onChange={setAppearance}
+                    options={[
+                      { value: 'system', label: 'System', icon: <Monitor className="w-3.5 h-3.5" /> },
+                      { value: 'dark', label: 'Dark', icon: <Moon className="w-3.5 h-3.5" /> },
+                      { value: 'light', label: 'Light', icon: <Sun className="w-3.5 h-3.5" /> },
+                    ]}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-xs text-slate-300">Low Power</span>
+                  <Segmented<PowerMode>
+                    label="Low power"
+                    value={powerMode}
+                    onChange={setPowerMode}
+                    options={[
+                      { value: 'auto', label: 'Auto' },
+                      { value: 'on', label: 'On' },
+                      { value: 'off', label: 'Off' },
+                    ]}
+                  />
+                  <p className="text-[11px] leading-snug text-slate-500">
+                    {powerReason
+                      ? POWER_NOTE[powerReason]
+                      : powerMode === 'off'
+                        ? 'Off: full frame rate and sharpness, always.'
+                        : 'Auto: turns on while on battery or if frames run slow.'}
+                  </p>
+                </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-300">Dim Art Behind Content</span>
                   <input

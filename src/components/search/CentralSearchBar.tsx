@@ -65,7 +65,7 @@ export const CentralSearchBar: React.FC = () => {
     <div className="relative z-30 w-full max-w-xl mx-auto px-4">
       <form
         onSubmit={handleSearch}
-        className="relative flex items-center bg-[#0c0e14]/85 hover:bg-[#0c0e14]/90 backdrop-blur-2xl rounded-2xl px-3 py-2.5 transition-all duration-300 border border-white/15 focus-within:border-teal-400/50 focus-within:ring-2 focus-within:ring-teal-400/30 shadow-[0_12px_40px_rgba(0,0,0,0.65)]"
+        className="relative flex items-center bg-surface/85 hover:bg-surface/90 backdrop-blur-2xl rounded-2xl px-3 py-2.5 transition-all duration-300 border border-white/15 focus-within:border-teal-400/50 focus-within:ring-2 focus-within:ring-teal-400/30 shadow-[0_12px_40px_rgb(var(--glass-shadow)/var(--glass-shadow-alpha))]"
       >
         {/* Search Engine Selector Pill */}
         <div className="relative" ref={dropdownRef}>

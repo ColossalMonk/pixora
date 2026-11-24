@@ -80,7 +80,7 @@ export const WeatherWidget: React.FC = () => {
 
   return (
     <div
-      className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0c0e14]/85 backdrop-blur-2xl text-xs text-white shadow-xl select-none border border-white/12"
+      className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface/85 backdrop-blur-2xl text-xs text-white shadow-xl select-none border border-white/12"
       title={`${weather.condition} in ${displayCity}`}
     >
       {renderIcon(weather.icon)}

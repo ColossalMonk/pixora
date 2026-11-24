@@ -86,14 +86,15 @@ All animal behaviors, flocking algorithms, and vector shaders are ported directl
 
 Upload photos or looping videos directly to create custom ASCII art backgrounds:
 
-- **Full Video & Image Support**: Drop or upload any image (`.png`, `.jpg`, `.webp`) or video (`.mp4`, `.webm`, `.ogg`).
+- **Full Video & Image Support**: Drop or upload any image (`.png`, `.jpg`, `.webp`), animated GIF or WebP, or video (`.mp4`, `.webm`, `.ogg`).
+- **Animated GIF / WebP**: animated images play at their own frame timing (Chrome, Edge and Brave decode them frame by frame; other browsers show the first frame).
 - **Real-Time Video ASCII Transcoding**: Hardware-accelerated frame sampling at 60 FPS converts video frames to ASCII with dynamic tone-mapping.
 - **Phosphor Backlight Glow**: Phosphor luminescence simulation replicates the nostalgic ambiance of vintage monochromatic CRT monitors.
 - **Custom Slot Naming**: Rename your custom slots (e.g. *"Cat in Leaves"*, *"Matrix Cyberpunk"*, *"Anime Ambient Loop"*). Names appear immediately on the top selection bar.
 - **Cleaner conversion**: each character cell averages its pixels in linear light, characters are chosen by their measured ink in the bundled font, neighbouring tones are blended with an ordered (Bayer) pattern, and cells keep their character unless another is clearly better, so video and drift don't shimmer.
 - **Shape-matched strokes**: in Characters mode every cell is read as 3×5 sub-cells; where the picture has a contour, the character whose shape matches it is used (`/ \ | _ ( ) [ ] < >`…), so outlines read as real strokes while flat areas keep calm shading.
 - **Edge Outlines** slider: finds coherent contours (structure tensor, thinned to one sample) and inks them in for a sketch-like outline.
-- **GPU drawing**: custom slots draw with WebGL2 (one instanced draw per frame, about 4× faster than canvas 2D on a full picture), falling back to canvas 2D automatically.
+- **GPU drawing**: custom slots and animals draw with WebGL2 (one instanced draw per frame; about 4× faster than canvas 2D on a full picture, 1.4–3× on the animal scenes), falling back to canvas 2D automatically.
 - **Render Modes**:
   - `Characters`: Classic ASCII density ramp (` .:-=+*#%@`).
   - `Braille`: High-density `2 × 4` dot matrices using Unicode Braille Patterns (`0x2800–0x28FF`).
@@ -159,6 +160,9 @@ Click the gear icon on the top right (or press `S`) to slide out the Tweaks & Se
 - **Universal Search**: Supports Google, DuckDuckGo, Bing, Brave, Ecosia, and Custom endpoints. Supports quick URL typing (`github.com`) and search engine bangs (`!g`, `!d`, `!b`).
 - **Shortcuts Bar**: Bookmark bar with automatic favicon resolution and quick add/remove controls.
 - **Accessibility & Motion**: Includes dedicated *Dim Art Behind Content* overlay, *Reduced Motion* mode, and live font size controls (`10px – 20px`).
+- **Light & dark themes**: *System* follows your OS setting; *Light* draws crisp white with vivid ink (custom pictures become dark ink on white), *Dark* is the original look.
+- **Low power**: *Auto* turns on while your laptop runs on battery or if frames run slow on your machine; it caps animation at 30 fps and draws at standard sharpness. *On* and *Off* force it.
+- **Save this frame**: the camera button (or `P`) saves the scene as it is right now as a PNG, without the clock or widgets.
 
 ---
 
@@ -211,6 +215,9 @@ pnpm build
 # 4. Package standalone zip
 pnpm package:release
 # or: npm run package:release
+
+# Run the tests (Vitest)
+pnpm test
 ```
 
 Once built, load the `dist/` directory as an unpacked extension in your browser.
@@ -225,6 +232,7 @@ Once built, load the `dist/` directory as an unpacked extension in your browser.
 | `S` | Open / Close the **Tweaks & Settings Drawer** |
 | `←` `→` or `[` `]` | Previous / next **scene** |
 | `1`–`9`, `0` | Jump straight to scene 1–10 |
+| `P` | Save the current frame as a PNG |
 | `/` | Immediately focus the **Central Search Bar** |
 | `Esc` | Clear search input / close drawer when open |
 | `Enter` | Execute search or navigate to typed URL |
@@ -233,7 +241,7 @@ Once built, load the `dist/` directory as an unpacked extension in your browser.
 
 ## Under the Hood / Architecture
 
-- **Canvas 2D Character Rasterizer**: Custom glyph-batching engine that clusters cells by color and alpha to minimize context state switches, easily pushing 60 FPS on high-DPI displays.
+- **WebGL2 Glyph Renderer**: every lit cell is one instance in a single instanced draw, with glyphs from a lazily filled atlas; a canvas 2D renderer (batched by colour and alpha) takes over where WebGL2 isn't available.
 - **Semi-Lagrangian Fluid Gas Field**: Multi-scale Navier-Stokes solver using staggered bilinear sampling for continuous, silky advection without artifacting.
 - **IndexedDB Media Vault**: Custom photos and video blobs are stored locally in the browser's IndexedDB (`pixora-media` database) without memory size limits.
 - **Calm Zone**: animals fade softly behind the clock, search and shortcuts so text stays readable; Zen mode lifts it.

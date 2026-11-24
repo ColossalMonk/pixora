@@ -18,6 +18,11 @@ export interface SearchEngine {
   icon: string;
 }
 
+/** Low-power mode: 'auto' turns on while on battery or when frames run slow. */
+export type PowerMode = 'auto' | 'on' | 'off';
+/** Light or dark look; 'system' follows the OS setting. */
+export type Appearance = 'system' | 'dark' | 'light';
+
 export type CustomRenderMode = 'tiles' | 'characters' | 'braille' | 'blocks';
 export type CustomColorMode = 'full' | 'mono' | 'matrix' | 'amber' | 'cyberpunk';
 export type CustomPointerEffect = 'gas' | 'ripple' | 'lantern' | 'drift' | 'none';
@@ -73,6 +78,8 @@ export interface UserSettings {
   performanceTier: PerformanceTier;
   calmCenter: number;
   reducedMotion: boolean;
+  powerMode: PowerMode;
+  appearance: Appearance;
 
   // Productivity
   userName: string;

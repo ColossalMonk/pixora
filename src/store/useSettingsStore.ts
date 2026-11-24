@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { UserSettings, ShortcutItem, SearchEngineId, CustomImageConfig, DEFAULT_CUSTOM_CONFIG } from '../types/settings';
+import { UserSettings, ShortcutItem, SearchEngineId, CustomImageConfig, DEFAULT_CUSTOM_CONFIG, PowerMode, Appearance } from '../types/settings';
 import { CharacterStyle, ColorTheme } from '../types/engine';
 import { CustomSlotId, SceneId } from '../types/environment';
 import { StorageService } from '../services/storageService';
@@ -35,6 +35,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   performanceTier: 'auto',
   calmCenter: 0.6,
   reducedMotion: false,
+  powerMode: 'auto',
+  appearance: 'system',
 
   userName: '',
   searchEngine: 'google',
@@ -56,7 +58,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
  * Keeps only known settings whose type matches the default, and drops a scene id
  * that no longer exists (e.g. a v2.0 world), so the tab falls back to an animal.
  */
-function sanitize(raw: Record<string, unknown>): Partial<UserSettings> {
+export function sanitize(raw: Record<string, unknown>): Partial<UserSettings> {
   const out: Record<string, unknown> = {};
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof UserSettings)[]) {
     const value = raw[key];
@@ -66,7 +68,14 @@ function sanitize(raw: Record<string, unknown>): Partial<UserSettings> {
     out[key] = value;
   }
   if (!SCENE_IDS.has(out.activeScene as string)) delete out.activeScene;
+  if (!['auto', 'on', 'off'].includes(out.powerMode as string)) delete out.powerMode;
+  if (!['system', 'dark', 'light'].includes(out.appearance as string)) delete out.appearance;
   return out as Partial<UserSettings>;
+}
+
+/** v2.0 settings → v2.1+: animal tweaks start fresh (different knob names); the last animal becomes the scene. */
+export function fromLegacy(legacy: Record<string, unknown>): Record<string, unknown> {
+  return { ...legacy, animalTweaks: undefined, activeScene: legacy.activeAnimal };
 }
 
 interface SettingsStore extends UserSettings {
@@ -108,6 +117,8 @@ interface SettingsStore extends UserSettings {
   setCharacterStyle: (style: CharacterStyle) => void;
   setFontSize: (size: number) => void;
   setReducedMotion: (reduced: boolean) => void;
+  setPowerMode: (mode: PowerMode) => void;
+  setAppearance: (appearance: Appearance) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
@@ -120,10 +131,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       if (!raw) {
         // Carry over shortcuts, name, city and preferences from v2.0 and earlier.
         const legacy = await StorageService.get<Record<string, unknown> | null>(LEGACY_SETTINGS_KEY, null);
-        if (legacy) {
-          // v2.0 animal tweaks used different knob names, so they start fresh.
-          raw = { ...legacy, animalTweaks: undefined, activeScene: legacy.activeAnimal };
-        }
+        if (legacy) raw = fromLegacy(legacy);
       }
       const saved = raw ? sanitize(raw) : null;
       if (raw && saved) StorageService.set(SETTINGS_KEY, saved);
@@ -168,6 +176,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         performanceTier: next.performanceTier,
         calmCenter: next.calmCenter,
         reducedMotion: next.reducedMotion,
+        powerMode: next.powerMode,
+        appearance: next.appearance,
         userName: next.userName,
         searchEngine: next.searchEngine,
         customSearchUrl: next.customSearchUrl,
@@ -248,4 +258,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   setCharacterStyle: (characterStyle) => get().updateSettings({ characterStyle }),
   setFontSize: (fontSize) => get().updateSettings({ fontSize }),
   setReducedMotion: (reducedMotion) => get().updateSettings({ reducedMotion }),
+  setPowerMode: (powerMode) => get().updateSettings({ powerMode }),
+  setAppearance: (appearance) => get().updateSettings({ appearance }),
 }));

@@ -11,8 +11,8 @@
     margin: 0;
     padding: 0;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background-color: #08080a;
-    color: #f1f5f9;
+    background-color: rgb(var(--c-canvas));
+    color: rgb(var(--c-slate-100));
     user-select: none;
     -webkit-font-smoothing: antialiased;
   }
@@ -22,32 +22,46 @@
   }
 }
 
+/* Glass surfaces follow the theme (see tailwind.config.js for the colour variables). */
+:root {
+  --glass-bg: 12 14 20;
+  --glass-line: 255 255 255;
+  --glass-shadow: 0 0 0;
+  --glass-shadow-alpha: 0.55;
+}
+[data-theme="light"] {
+  --glass-bg: 255 255 255;
+  --glass-line: 15 23 42;
+  --glass-shadow: 30 41 59;
+  --glass-shadow-alpha: 0.14;
+}
+
 /* Glassmorphism primitives */
 .glass-panel {
-  background: rgba(12, 14, 20, 0.85);
+  background: rgb(var(--glass-bg) / 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.55);
+  border: 1px solid rgb(var(--glass-line) / 0.12);
+  box-shadow: 0 12px 40px 0 rgb(var(--glass-shadow) / var(--glass-shadow-alpha));
 }
 
 .glass-panel-subtle {
-  background: rgba(14, 16, 24, 0.78);
+  background: rgb(var(--glass-bg) / 0.78);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.35);
+  border: 1px solid rgb(var(--glass-line) / 0.09);
+  box-shadow: 0 8px 24px 0 rgb(var(--glass-shadow) / calc(var(--glass-shadow-alpha) * 0.65));
 }
 
 .glass-button {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgb(var(--glass-line) / 0.05);
+  border: 1px solid rgb(var(--glass-line) / 0.08);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.16);
+  background: rgb(var(--glass-line) / 0.1);
+  border-color: rgb(var(--glass-line) / 0.16);
   transform: translateY(-1px);
 }
 
@@ -62,12 +76,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgb(var(--glass-line) / 0.15);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgb(var(--glass-line) / 0.25);
 }
 
 /* Mindful breathing animation */

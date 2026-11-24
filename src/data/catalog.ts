@@ -112,3 +112,23 @@ export const CATALOG: SceneMeta[] = [
 export function getSceneMeta(id: SceneId): SceneMeta {
   return CATALOG.find((s) => s.id === id) || CATALOG[0];
 }
+
+/** The scene `dir` steps away from `id`, wrapping around the list. */
+export function stepScene(id: string, dir: number): SceneId {
+  const i = Math.max(0, CATALOG.findIndex((s) => s.id === id));
+  const n = CATALOG.length;
+  return CATALOG[(((i + dir) % n) + n) % n].id as SceneId;
+}
+
+/** Number keys: 1–9 pick the first nine scenes, 0 the tenth. null for other keys. */
+export function sceneForKey(key: string): SceneId | null {
+  if (!/^[0-9]$/.test(key)) return null;
+  const i = key === '0' ? 9 : Number(key) - 1;
+  return i < CATALOG.length ? (CATALOG[i].id as SceneId) : null;
+}
+
+/** Display name: a custom slot's own name if it has one, else the catalog name. */
+export function sceneLabel(id: string, customNames: Record<string, { name?: string } | undefined> = {}): string {
+  const custom = customNames[id]?.name?.trim();
+  return custom || CATALOG.find((s) => s.id === id)?.name || id;
+}

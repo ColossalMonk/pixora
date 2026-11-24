@@ -108,6 +108,22 @@ export function shapeTable(fontFamily: string, fontPx: number, cellW: number, ce
     });
   }
 
+  const table = tableFromCoverage(glyphs, raw);
+  // Don't cache a measurement taken with a fallback font before the web font loaded.
+  if (!document.fonts || document.fonts.check(`600 ${fontPx}px ${fontFamily}`)) shapeCache.set(key, table);
+  return table;
+}
+
+/**
+ * Builds a ShapeTable from measured coverage: `raw` holds SUB_X×SUB_Y ink
+ * values (0..1) per glyph, in the order of `glyphs`.
+ */
+export function tableFromCoverage(glyphs: number[], raw: Float32Array): ShapeTable {
+  const mean = glyphs.map((_, gi) => {
+    let t = 0;
+    for (let s = 0; s < SUBS; s++) t += raw[gi * SUBS + s];
+    return t / SUBS;
+  });
   const order = glyphs.map((_, i) => i).sort((a, b) => mean[a] - mean[b]);
   const max = Math.max(1e-6, mean[order[order.length - 1]]);
   const table: ShapeTable = {
@@ -134,8 +150,6 @@ export function shapeTable(fontFamily: string, fontPx: number, cellW: number, ce
     }
     table.norm[j] = Math.sqrt(sq);
   });
-  // Don't cache a measurement taken with a fallback font before the web font loaded.
-  if (!document.fonts || document.fonts.check(`600 ${fontPx}px ${fontFamily}`)) shapeCache.set(key, table);
   return table;
 }
 

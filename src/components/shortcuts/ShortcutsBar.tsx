@@ -51,7 +51,7 @@ export const ShortcutsBar: React.FC = () => {
           return (
             <div
               key={shortcut.id}
-              className="group relative flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-[#0c0e14]/80 hover:bg-[#151822]/95 backdrop-blur-2xl border border-white/12 hover:border-white/25 shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-200 cursor-pointer text-slate-300 hover:text-white"
+              className="group relative flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-surface/80 hover:bg-surface-2/95 backdrop-blur-2xl border border-white/12 hover:border-white/25 shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-200 cursor-pointer text-slate-300 hover:text-white"
             >
               {/* Delete button on hover */}
               <button
@@ -84,7 +84,7 @@ export const ShortcutsBar: React.FC = () => {
                     <Globe className="w-4 h-4 text-slate-400" />
                   )}
                 </div>
-                <span className="text-[11px] font-medium text-slate-200 group-hover:text-white truncate max-w-[68px] drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+                <span className="text-[11px] font-medium text-slate-200 group-hover:text-white truncate max-w-[68px] drop-shadow-[0_1px_4px_rgb(var(--c-black)/0.9)]">
                   {shortcut.title}
                 </span>
               </a>
@@ -96,7 +96,7 @@ export const ShortcutsBar: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsAddOpen(true)}
-          className="flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-[#0c0e14]/60 hover:bg-[#151822]/90 backdrop-blur-2xl border border-dashed border-white/20 hover:border-teal-400/50 text-slate-400 hover:text-teal-300 hover:scale-105 transition-all duration-200 shadow-lg"
+          className="flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-surface/60 hover:bg-surface-2/90 backdrop-blur-2xl border border-dashed border-white/20 hover:border-teal-400/50 text-slate-400 hover:text-teal-300 hover:scale-105 transition-all duration-200 shadow-lg"
           title="Add shortcut"
         >
           <div className="w-9 h-9 rounded-xl bg-white/[0.06] flex items-center justify-center mb-1">

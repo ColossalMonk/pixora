@@ -1,6 +1,6 @@
 # Pixora — Architecture
 
-> Version 2.1.x · Chrome / Edge / Brave, Manifest V3 new-tab override
+> Version 2.2.x · Chrome / Edge / Brave, Manifest V3 new-tab override
 
 Pixora is a React overlay (clock, greeting, search, shortcuts, weather, top bar, settings drawer) on top of one full-screen canvas. The canvas shows one of two kinds of scene:
 
@@ -30,6 +30,8 @@ graph TD
 - `animals/*.ts` — one file per species: defaults, controls, behaviour, and a `draw` that paints through the `Pen`.
 - `renderer.ts` — `AsciiRenderer`: cached background plus faint cell grid, a diffusing trail field, then silhouettes rasterised cell by cell (solid tiles with a glyph, soft edge glyphs, angled line glyphs).
 - **Pixora addition — calm zone:** `setCalm(rect)` lays the plain background back over the clock/search column with a soft elliptical mask after each frame, so animals fade behind the text. `AsciiCanvas` measures the column (`focusRef`'s first child) and turns the zone off in Zen mode.
+- **Pixora addition — GPU cells:** the engine adds two layers after the canvas: a WebGL canvas where `renderer.drawCellsGL` draws the cells through `core/GlyphGL` (glyph nudged 1 px down and tiles inset 0.5 px to match the 2D look), and a calm-zone canvas above it. The 2D canvas keeps the background, grid and trail. Main-thread cost per frame at 1440×900 dropped 1.4–3.2× (e.g. jellyfish 11.3 → 3.6 ms). If WebGL2 is missing or the context is lost, the layers are removed and `drawCells` (canvas 2D) runs as before.
+- **Pixora addition — low power and capture:** `setLowPower(on)` caps drawing at 30 fps (the simulation still steps at 60 Hz) and uses 1× pixel density; `onFrameCost` reports each frame's work time; `capture()` draws a fresh frame and returns it composited into one canvas.
 
 ## Custom slots (`environments/CustomImageScene.ts`)
 
@@ -46,7 +48,9 @@ The media lives in IndexedDB (`services/imageStore.ts`, one entry per slot). `im
 
 Measured at 1440×900 in Chrome: a still picture builds in about 24 ms (once), a video frame in about 11 ms, and `render()` takes about 2.5 ms.
 
-Videos are re-sampled once per decoded frame (`requestVideoFrameCallback`, falling back to `currentTime`) and pause while the tab is hidden or motion is reduced. A still picture redraws at ~12 fps for its slow drift, or holds the frame under reduced motion.
+Videos are re-sampled once per decoded frame (`requestVideoFrameCallback`, falling back to `currentTime`) and pause while the tab is hidden or motion is reduced. Animated GIF / WebP / APNG / AVIF go through `image-converter/AnimatedImage.ts`: the WebCodecs `ImageDecoder` decodes one frame at a time as it falls due (0–10 ms delays become 100 ms, as browsers do), and the scene re-samples once per new frame. Without `ImageDecoder` the slot shows the first frame through a plain `<img>`.
+
+Light theme: Characters and Braille draw darkness, so the tone ramp is inverted and colours go through `inkOnPaper` (`core/Color.ts`: at most ~34% luminance, hue kept, a little extra saturation); glow tiles become a pale tint. Tiles and Blocks keep the photo's own colours as a mosaic on white. Low power samples without supersampling and refreshes video edges every third frame. A still picture redraws at ~12 fps for its slow drift, or holds the frame under reduced motion.
 
 Render modes: Characters, Braille, Tiles, Blocks; colour modes from true colour to monochrome; brightness/contrast/gamma and a backlight glow. Pointer effects: gas (`physics/FluidGasField.ts`, semi-Lagrangian advection with vorticity and plume spread), travelling ripples, drift, or the **lantern** (a lagged Gaussian light with a 12-point fading trail, per-cell grain, a warm colour shift and a little rim flicker). Cells go into `core/RenderGrid` (typed arrays).
 
@@ -54,10 +58,17 @@ Render modes: Characters, Braille, Tiles, Blocks; colour modes from true colour 
 
 ## UI
 
-- `App.tsx` — layout, hotkeys (`Z` Zen, `S` settings, `Esc`, `← →`/`[ ]` and `1`–`0` for scenes), drag-and-drop of media onto the page (into the slot you're viewing, else the first empty one).
-- `navigation/TopBar.tsx` — weather, the always-visible scene chip (‹ name n/10 ›; click for the full list, which also opens on top-edge hover), Zen and settings buttons.
+- `App.tsx` — layout, hotkeys (`Z` Zen, `S` settings, `P` save frame, `Esc`, `← →`/`[ ]` and `1`–`0` for scenes, via `stepScene` / `sceneForKey` in `data/catalog.ts`), drag-and-drop of media onto the page (into the slot you're viewing, else the first empty one).
+- `navigation/TopBar.tsx` — weather, the always-visible scene chip (‹ name n/10 ›; click for the full list, which also opens on top-edge hover), save-frame, Zen and settings buttons.
+- `services/capture.ts` — the live scene registers a capturer; `saveFrame` turns its canvas into a PNG download named `pixora-<scene>-<date>-<time>.png`.
+- `services/power.ts` — low power. `auto` turns on while on battery (Battery Status API) or once frames have averaged over 18 ms of work for 3 s in a visible tab (`SlowFrameMeter`); `on`/`off` force it. Browsers don't expose the OS battery-saver switch.
+- `services/theme.ts` — resolves `appearance` (system/dark/light) against `prefers-color-scheme`, sets `<html data-theme>` and caches the result in `localStorage` so the next tab opens without a flash.
 - `drawer/EdgeHoverDrawer.tsx` — all settings: animal tweaks, custom slot media and look, search, shortcuts, weather, display toggles, reset to defaults.
 - `widgets/`, `search/`, `shortcuts/`, `greeting/` — the productivity overlay.
+
+## Theme
+
+The UI was written for dark: `white` text, `slate` greys and pale accent shades. `tailwind.config.js` points those colour names (and `canvas`, `surface`, `surface-2`) at CSS variables generated from Tailwind's own palette. `[data-theme="light"]` swaps them: `white` becomes slate-900 ink, `black` becomes white, the slate scale flips (300 ↔ 700…) and the accents' pale shades (200–500) become their deep versions. The glass panels in `index.css` use the same variables. Components keep their classes.
 
 ## Settings and persistence
 
@@ -69,6 +80,10 @@ Saved under `pixora_user_settings_v2` in `chrome.storage.local` (or `localStorag
 ## Weather
 
 `services/weatherService.ts` uses Open-Meteo (forecast and geocoding). With *Use my location* on, the place name comes from BigDataCloud's reverse geocoder. Without a city, the browser's time zone gives one.
+
+## Tests
+
+`pnpm test` runs Vitest on `tests/`: settings loading and v2.0 migration, scene stepping and number keys, frame file names, the low-power decision and slow-frame meter, theme resolution, GIF frame timing, glyph choice (including a check that flat bright skies never weave `#@#@`), shape matching, edge detection and light-theme ink colours. GitHub Actions runs the tests and the build on every push to main.
 
 ## Build and release
 

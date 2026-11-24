@@ -9,10 +9,13 @@ import { EdgeHoverDrawer } from './components/drawer/EdgeHoverDrawer';
 import { useSettingsStore } from './store/useSettingsStore';
 import { ImageStore } from './services/imageStore';
 import { CustomSlotId, SceneId } from './types/environment';
-import { CATALOG } from './data/catalog';
+import { CATALOG, sceneForKey, sceneLabel, stepScene } from './data/catalog';
+import { useResolvedTheme } from './services/theme';
+import { saveFrame } from './services/capture';
 
 export const App: React.FC = () => {
-  const { loadSettings, activeScene, setActiveScene } = useSettingsStore();
+  const { loadSettings, activeScene, setActiveScene, appearance } = useSettingsStore();
+  const theme = useResolvedTheme(appearance);
   const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const [isZenMode, setIsZenMode] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(() => searchParams?.get('drawer') === 'true');
@@ -39,19 +42,20 @@ export const App: React.FC = () => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       // Scenes: ← → (or [ ]) step through them, 1–9 and 0 jump straight to one.
-      const sceneIndex = CATALOG.findIndex((s) => s.id === useSettingsStore.getState().activeScene);
-      const go = (i: number) => {
+      const current = useSettingsStore.getState().activeScene;
+      const go = (id: SceneId) => {
         e.preventDefault();
-        setActiveScene(CATALOG[(i + CATALOG.length) % CATALOG.length].id as SceneId);
+        setActiveScene(id);
       };
-      if (e.key === 'ArrowRight' || e.key === ']') return go(sceneIndex + 1);
-      if (e.key === 'ArrowLeft' || e.key === '[') return go(sceneIndex - 1);
-      if (/^[0-9]$/.test(e.key)) {
-        const i = e.key === '0' ? 9 : Number(e.key) - 1;
-        if (i < CATALOG.length) return go(i);
-      }
+      if (e.key === 'ArrowRight' || e.key === ']') return go(stepScene(current, 1));
+      if (e.key === 'ArrowLeft' || e.key === '[') return go(stepScene(current, -1));
+      const keyed = sceneForKey(e.key);
+      if (keyed) return go(keyed);
 
-      if (e.key === 'z' || e.key === 'Z') {
+      if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        void savePicture();
+      } else if (e.key === 'z' || e.key === 'Z') {
         e.preventDefault();
         setIsZenMode((prev) => !prev);
       } else if (e.key === 's' || e.key === 'S') {
@@ -70,6 +74,18 @@ export const App: React.FC = () => {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [isZenMode, isSettingsOpen]);
+
+  const showToast = (text: string) => {
+    setDropToast(text);
+    setTimeout(() => setDropToast(null), 3500);
+  };
+
+  /** Saves what's on screen (the scene only, not the clock or widgets) as a PNG. */
+  const savePicture = async () => {
+    const s = useSettingsStore.getState();
+    const ok = await saveFrame(sceneLabel(s.activeScene, s.customConfigs));
+    showToast(ok ? 'Saved this frame as a PNG' : 'Nothing to save yet');
+  };
 
   // Drop an image or video anywhere on the page to render with glowing effect
   useEffect(() => {
@@ -100,8 +116,7 @@ export const App: React.FC = () => {
       await ImageStore.saveImage(targetSlot, file);
       setActiveScene(targetSlot);
 
-      setDropToast(`Applied to ${targetSlot.replace('-', ' ').toUpperCase()} with Phosphor Glow`);
-      setTimeout(() => setDropToast(null), 3500);
+      showToast(`Applied to ${targetSlot.replace('-', ' ').toUpperCase()}`);
     };
 
     window.addEventListener('dragover', over);
@@ -113,15 +128,16 @@ export const App: React.FC = () => {
   }, [activeScene, setActiveScene]);
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#06070c] text-slate-100 font-sans select-none">
+    <div className="relative w-screen h-screen overflow-hidden bg-canvas text-slate-100 font-sans select-none">
       {/* 1. Procedural Simulation Canvas (Full Screen) */}
-      <AsciiCanvas focusRef={focusRef} calm={!isZenMode} />
+      <AsciiCanvas focusRef={focusRef} calm={!isZenMode} theme={theme} />
 
       {/* 2. Top Bar: Weather (Left), Selection Pill on Top Hover (Center), Zen & Gear Icons (Right) */}
       <TopBar
         isZenMode={isZenMode}
         onToggleZen={() => setIsZenMode(!isZenMode)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onSaveFrame={savePicture}
       />
 
       {/* 3. Central Interactive Hub (Clock, Greeting, Search, Shortcuts) */}

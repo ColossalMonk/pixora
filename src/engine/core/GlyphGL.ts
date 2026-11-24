@@ -63,6 +63,13 @@ void main() {
 /** The 2D renderer draws alpha in 8 steps; match it so both look the same. */
 const quant = (a: number) => (a >= 1 ? 1 : Math.min(1, (Math.floor(a * 8) + 1) / 8));
 
+export interface GlyphDrawOptions {
+  /** Glyph nudge down from the cell centre, CSS px (the animal renderer uses 1). */
+  dy?: number;
+  /** Tile inset on each side, CSS px (default: a hairline). */
+  gap?: number;
+}
+
 export class GlyphGL {
   private gl: WebGL2RenderingContext;
   private program: WebGLProgram;
@@ -150,8 +157,11 @@ export class GlyphGL {
   }
 
   /** Lays out a fresh atlas for this cell size and font (glyphs are added as they appear). */
-  private ensureAtlas(cw: number, ch: number, font: string, dpr: number): void {
-    const key = `${cw}|${ch}|${font}|${dpr}`;
+  private dy = 0;
+
+  private ensureAtlas(cw: number, ch: number, font: string, dpr: number, dy: number): void {
+    const key = `${cw}|${ch}|${font}|${dpr}|${dy}`;
+    this.dy = dy;
     if (key === this.atlasKey) return;
     this.atlasKey = key;
     this.slotW = Math.ceil(cw * dpr) + 1;
@@ -197,7 +207,7 @@ export class GlyphGL {
       g.font = font;
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.fillText(String.fromCodePoint(cp), cw / 2, ch / 2);
+      g.fillText(String.fromCodePoint(cp), cw / 2, ch / 2 + this.dy);
     }
     g.restore();
     this.atlasDirty = true;
@@ -205,7 +215,7 @@ export class GlyphGL {
   }
 
   /** Draws the grid. Returns false if the context is gone (caller falls back to 2D). */
-  public draw(grid: RenderGrid, width: number, height: number, dpr: number, font: string): boolean {
+  public draw(grid: RenderGrid, width: number, height: number, dpr: number, font: string, opts: GlyphDrawOptions = {}): boolean {
     if (this.lost) return false;
     const gl = this.gl;
     const canvas = gl.canvas as HTMLCanvasElement;
@@ -217,7 +227,7 @@ export class GlyphGL {
     }
     const cw = grid.cellWidth;
     const ch = grid.cellHeight;
-    this.ensureAtlas(cw, ch, font, dpr);
+    this.ensureAtlas(cw, ch, font, dpr, opts.dy ?? 0);
 
     // Pack lit cells.
     const n = grid.size;
@@ -272,7 +282,7 @@ export class GlyphGL {
     gl.uniform2f(this.uni.uSlot, this.slotW, this.slotH);
     gl.uniform2f(this.uni.uAtlasSize, this.atlas.width, this.atlas.height);
     gl.uniform1f(this.uni.uSlotsPerRow, this.slotsPerRow);
-    gl.uniform1f(this.uni.uGap, Math.min(1, cw * 0.06) * dpr);
+    gl.uniform1f(this.uni.uGap, (opts.gap ?? Math.min(1, cw * 0.06)) * dpr);
     gl.uniform1i(this.uni.uAtlas, 0);
 
     gl.enable(gl.BLEND);

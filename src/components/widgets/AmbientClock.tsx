@@ -22,7 +22,7 @@ export const AmbientClock: React.FC = () => {
 
   return (
     <div className="relative flex flex-col items-center select-none text-white">
-      <div className="flex items-baseline text-5xl sm:text-6xl md:text-7xl font-normal sm:font-medium tracking-tight font-mono z-10 text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] [text-shadow:0_2px_20px_rgba(0,0,0,0.95)]">
+      <div className="flex items-baseline text-5xl sm:text-6xl md:text-7xl font-normal sm:font-medium tracking-tight font-mono z-10 text-white drop-shadow-[0_4px_16px_rgb(var(--c-black)/0.95)] [text-shadow:0_2px_20px_rgb(var(--c-black)/0.95)]">
         <span>{hours}</span>
         <span className="text-teal-400 mx-1.5 animate-pulse-subtle font-light">:</span>
         <span>{minutes}</span>

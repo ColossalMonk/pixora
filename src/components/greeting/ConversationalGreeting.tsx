@@ -59,7 +59,7 @@ export const ConversationalGreeting: React.FC = () => {
 
   return (
     <div className="text-center select-none animate-fade-in mb-4">
-      <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-[#0c0e14]/75 hover:bg-[#0c0e14]/90 backdrop-blur-xl border border-white/10 shadow-lg transition-colors">
+      <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-surface/75 hover:bg-surface/90 backdrop-blur-xl border border-white/10 shadow-lg transition-colors">
         <h1 className="text-xs sm:text-sm font-medium text-slate-200 tracking-wide drop-shadow-sm">
           {greeting}
         </h1>

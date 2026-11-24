@@ -11,6 +11,8 @@
 import type { Animal, Flock, Tuning } from "./flock";
 import { INK_BODY, INK_DARK, INK_GLASS, INK_GLOW, INK_LIT, INK_SCALE, INK_SHIMMER, INK_SPOT, type Ink, type RGB } from "./ink";
 import { clamp, hash3 } from "./math";
+import { GlyphGL } from "../core/GlyphGL";
+import { RenderGrid } from "../core/RenderGrid";
 
 const ALPHA_LEVELS = 6;
 export type Theme = "light" | "dark";
@@ -25,7 +27,8 @@ interface Palette {
 }
 
 const PALETTES: Record<Theme, Palette> = {
-  light: { background: [246, 243, 236], grid: [30, 34, 60, 0.07], trailAlpha: 0.7, ink: [42, 42, 59] },
+  // Pixora: crisp white instead of the upstream paper tone.
+  light: { background: [250, 250, 252], grid: [30, 34, 60, 0.07], trailAlpha: 0.7, ink: [42, 42, 59] },
   dark: { background: [6, 7, 12], grid: [255, 255, 255, 0.055], trailAlpha: 0.85, ink: [150, 160, 200] },
 };
 
@@ -242,12 +245,38 @@ export class AsciiRenderer {
   private cellColor = new Uint32Array(0);
   private cellGlyph = new Uint16Array(0);
 
+  // Pixora: cells drawn by WebGL on a layer above this canvas, calm zone on a layer above that.
+  private gl: GlyphGL | null = null;
+  private glGrid = new RenderGrid();
+  private calmCanvas: HTMLCanvasElement | null = null;
+  /** Called once if the WebGL context is lost and drawing falls back to 2D. */
+  onGpuLost: (() => void) | null = null;
+
   constructor(private canvas: HTMLCanvasElement, public tuning: Tuning) {
     const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) throw new Error("2D canvas unavailable");
     this.ctx = ctx;
     this.bg = document.createElement("canvas");
     this.setTheme("light");
+  }
+
+  /** Pixora: draw cells with WebGL into glCanvas; the calm zone goes on calmCanvas. False if unavailable. */
+  attachGPU(glCanvas: HTMLCanvasElement, calmCanvas: HTMLCanvasElement): boolean {
+    this.gl = GlyphGL.create(glCanvas);
+    if (!this.gl) return false;
+    this.calmCanvas = calmCanvas;
+    this.paintCalm();
+    return true;
+  }
+
+  get usingGPU() {
+    return this.gl !== null;
+  }
+
+  private dropGPU() {
+    this.gl = null;
+    this.calmCanvas = null;
+    this.onGpuLost?.();
   }
 
   setFontFamily(family: string) {
@@ -321,6 +350,9 @@ export class AsciiRenderer {
       this.cellColor = new Uint32Array(n);
       this.cellGlyph = new Uint16Array(n);
     }
+    if (this.glGrid.cols !== this.cols || this.glGrid.rows !== this.rows || this.glGrid.cellWidth !== this.cw) {
+      this.glGrid.resize(this.cols, this.rows, this.cw, this.ch);
+    }
     this.paintBackground();
   }
 
@@ -356,7 +388,12 @@ export class AsciiRenderer {
 
     this.drawTrail(flock.time);
 
-    ctx.font = `600 ${Math.round(ch * 0.74)}px ${this.fontFamily}`;
+    const font = `600 ${Math.round(ch * 0.74)}px ${this.fontFamily}`;
+    if (this.gl) {
+      if (this.drawCellsGL(font)) return;
+      this.dropGPU();
+    }
+    ctx.font = font;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     this.drawCells();
@@ -382,6 +419,7 @@ export class AsciiRenderer {
     const rect = this.calmRect;
     if (!rect || this.width === 0) {
       this.calmLayer = null;
+      this.copyCalm();
       return;
     }
     const layer = this.calmLayer ?? document.createElement("canvas");
@@ -409,6 +447,22 @@ export class AsciiRenderer {
     g.fillRect(-R, -R, R * 2, R * 2);
     g.globalCompositeOperation = "source-over";
     this.calmLayer = layer;
+    this.copyCalm();
+  }
+
+  /** With WebGL the cells sit above this canvas, so the calm zone needs its own layer on top. */
+  private copyCalm() {
+    const out = this.calmCanvas;
+    if (!out) return;
+    if (out.width !== this.canvas.width || out.height !== this.canvas.height) {
+      out.width = this.canvas.width;
+      out.height = this.canvas.height;
+    }
+    const g = out.getContext("2d");
+    if (!g) return;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, out.width, out.height);
+    if (this.calmLayer) g.drawImage(this.calmLayer, 0, 0);
   }
 
   // ── trail ───────────────────────────────────────────────────────────
@@ -666,6 +720,43 @@ export class AsciiRenderer {
     this.cellFill[i] = this.fade(fr, fg, fb, fog);
     this.cellColor[i] = this.fade(r, g, b, fog);
     this.cellGlyph[i] = glyph.charCodeAt(0);
+  }
+
+  /** Copies the cells into a RenderGrid and draws them in one instanced WebGL call. */
+  private drawCellsGL(font: string): boolean {
+    const { cols, rows, cellFlag, cellFill, cellColor, cellGlyph } = this;
+    const grid = this.glGrid;
+    const n = cols * rows;
+    const { glyph, fg, alpha, bg, bgAlpha } = grid;
+    for (let i = 0; i < n; i++) {
+      const flag = cellFlag[i];
+      if (!flag) {
+        glyph[i] = 0;
+        alpha[i] = 0;
+        bgAlpha[i] = 0;
+        continue;
+      }
+      glyph[i] = cellGlyph[i];
+      fg[i] = cellColor[i];
+      alpha[i] = 1;
+      bg[i] = cellFill[i];
+      bgAlpha[i] = flag === CELL_SOLID ? 1 : 0;
+    }
+    return this.gl!.draw(grid, this.width, this.height, this.dpr, font, { dy: 1, gap: 0.5 });
+  }
+
+  /** Pixora: the frame as one canvas (backdrop, cells and calm zone), for saving as a picture. */
+  composite(glCanvas: HTMLCanvasElement | null): HTMLCanvasElement {
+    const out = document.createElement("canvas");
+    out.width = this.canvas.width;
+    out.height = this.canvas.height;
+    const g = out.getContext("2d")!;
+    g.drawImage(this.canvas, 0, 0);
+    if (this.gl && glCanvas) {
+      g.drawImage(glCanvas, 0, 0, out.width, out.height);
+      if (this.calmLayer) g.drawImage(this.calmLayer, 0, 0);
+    }
+    return out;
   }
 
   private drawCells() {

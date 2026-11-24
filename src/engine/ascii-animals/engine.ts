@@ -33,6 +33,14 @@ export class AnimalEngine {
   private get still() {
     return this.forceStill || this.reducedMotion.matches;
   }
+  /** Pixora: low power caps the frame rate at 30 fps and draws at 1× pixel density. */
+  private lowPower = false;
+  private lastDrawn = 0;
+  /** Pixora: WebGL layer for the cells and a layer for the calm zone above it. */
+  private glCanvas: HTMLCanvasElement | null = null;
+  private calmCanvas: HTMLCanvasElement | null = null;
+  /** Pixora: each drawn frame's work time in ms (for auto low power). */
+  onFrameCost: ((ms: number) => void) | null = null;
 
   /** count pins the population; tuning overrides any of the animal's defaults. */
   constructor(
@@ -52,6 +60,7 @@ export class AnimalEngine {
     this.renderer.setFontFamily(getComputedStyle(canvas).fontFamily);
     this.renderer.setAnimal(this.animal, this.tuning);
     this.renderer.setTheme(theme);
+    this.attachGPU();
     this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -73,8 +82,50 @@ export class AnimalEngine {
     this.schedule();
   }
 
+  /** Pixora: WebGL overlay for the cells (about 2-3x cheaper than canvas text), 2D if unavailable. */
+  private attachGPU() {
+    const layer = () => {
+      const c = document.createElement("canvas");
+      c.setAttribute("aria-hidden", "true");
+      c.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:block";
+      return c;
+    };
+    const gl = layer();
+    const calm = layer();
+    if (!this.renderer.attachGPU(gl, calm)) return;
+    this.canvas.after(gl, calm);
+    this.glCanvas = gl;
+    this.calmCanvas = calm;
+    this.renderer.onGpuLost = () => this.removeLayers();
+  }
+
+  private removeLayers() {
+    this.glCanvas?.remove();
+    this.calmCanvas?.remove();
+    this.glCanvas = null;
+    this.calmCanvas = null;
+  }
+
+  get usingGPU() {
+    return this.renderer.usingGPU;
+  }
+
+  /** Pixora: low power (30 fps cap, 1x pixel density). */
+  setLowPower(on: boolean) {
+    if (on === this.lowPower) return;
+    this.lowPower = on;
+    this.resize();
+  }
+
+  /** Pixora: draws a fresh frame and returns it as one canvas (for saving as a picture). */
+  capture(): HTMLCanvasElement {
+    this.renderer.render(this.flock, 0);
+    return this.renderer.composite(this.glCanvas);
+  }
+
   destroy() {
     this.disposed = true;
+    this.removeLayers();
     cancelAnimationFrame(this.raf);
     this.resizeObserver.disconnect();
     this.intersectionObserver.disconnect();
@@ -119,7 +170,7 @@ export class AnimalEngine {
   private resize() {
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width < 1 || rect.height < 1) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = this.lowPower ? 1 : Math.min(window.devicePixelRatio || 1, 2);
     this.renderer.resize(rect.width, rect.height, dpr);
     this.flock.resize(rect.width, rect.height);
     if (this.still) this.drawStill();
@@ -133,6 +184,13 @@ export class AnimalEngine {
   }
 
   private frame = (now: number) => {
+    // Low power: at most 30 frames a second (the sim still steps at 60 Hz).
+    if (this.lowPower && now - this.lastDrawn < 1000 / 30 - 2) {
+      this.raf = requestAnimationFrame(this.frame);
+      return;
+    }
+    this.lastDrawn = now;
+    const work = performance.now();
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
     this.acc += dt;
@@ -144,6 +202,7 @@ export class AnimalEngine {
     }
     if (steps === MAX_STEPS) this.acc = 0;
     this.renderer.render(this.flock, dt);
+    this.onFrameCost?.(performance.now() - work);
     this.raf = requestAnimationFrame(this.frame);
   };
 

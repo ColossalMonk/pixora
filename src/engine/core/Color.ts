@@ -72,3 +72,18 @@ export function hash2(x: number, y: number): number {
   h ^= h >>> 16;
   return (h >>> 0) / 4294967296;
 }
+
+/**
+ * Light theme: ink must read on white. Darkens a colour to at most ~34%
+ * luminance, keeping its hue and pushing it a little away from grey.
+ */
+export function inkOnPaper(c: number): number {
+  const r = (c >> 16) & 255;
+  const g = (c >> 8) & 255;
+  const b = c & 255;
+  const y = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  const k = y > 0.34 ? 0.34 / y : 1;
+  const m = (r + g + b) / 3;
+  const f = (v: number) => Math.max(0, Math.min(255, Math.round((m + (v - m) * 1.25) * k)));
+  return (f(r) << 16) | (f(g) << 8) | f(b);
+}

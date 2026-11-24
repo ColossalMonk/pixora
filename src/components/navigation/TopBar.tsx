@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import { CATALOG } from '../../data/catalog';
+import { CATALOG, stepScene } from '../../data/catalog';
 import { CustomSlotId, SceneId } from '../../types/environment';
 import { WeatherWidget } from '../widgets/WeatherWidget';
-import { ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Settings } from 'lucide-react';
+import { Camera, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Settings } from 'lucide-react';
 
 interface TopBarProps {
   isZenMode: boolean;
   onToggleZen: () => void;
   onOpenSettings: () => void;
+  onSaveFrame: () => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ isZenMode, onToggleZen, onOpenSettings }) => {
+export const TopBar: React.FC<TopBarProps> = ({ isZenMode, onToggleZen, onOpenSettings, onSaveFrame }) => {
   const [isPillHovered, setIsPillHovered] = useState(false);
   // Opened by clicking the scene chip (works on touch screens too); stays until a pick or outside click.
   const [isPillPinned, setIsPillPinned] = useState(false);
@@ -25,10 +26,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isZenMode, onToggleZen, onOpenSe
   };
   const index = Math.max(0, CATALOG.findIndex((s) => s.id === activeScene));
   const current = CATALOG[index];
-  const step = (dir: number) => {
-    const next = CATALOG[(index + dir + CATALOG.length) % CATALOG.length];
-    setActiveScene(next.id as SceneId);
-  };
+  const step = (dir: number) => setActiveScene(stepScene(activeScene, dir));
   const isPillOpen = (isPillHovered || isPillPinned) && !isZenMode;
 
   // Close the pinned pill on an outside click or Esc.
@@ -79,11 +77,24 @@ export const TopBar: React.FC<TopBarProps> = ({ isZenMode, onToggleZen, onOpenSe
 
       {/* ── 2. Top-Right: Zen Icon + Gear Icon (Zen is never hidden; Gear directly opens settings) ── */}
       <div className="fixed top-4 right-6 z-30 flex items-center gap-2 select-none">
+        {/* Save the current frame as a PNG (hotkey P) */}
+        <button
+          type="button"
+          onClick={onSaveFrame}
+          className={`w-9 h-9 rounded-full bg-surface/85 backdrop-blur-2xl flex items-center justify-center text-slate-200 hover:text-white hover:bg-white/10 active:scale-90 transition-all duration-300 shadow-xl border border-white/12 cursor-pointer ${
+            isZenMode ? 'opacity-0 -translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0'
+          }`}
+          title="Save this frame as a picture (Hotkey: P)"
+          aria-label="Save this frame as a PNG"
+        >
+          <Camera className="w-4 h-4 text-slate-300" />
+        </button>
+
         {/* Zen Mode Button (Always visible so the user can easily toggle Zen on/off) */}
         <button
           type="button"
           onClick={onToggleZen}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0c0e14]/85 backdrop-blur-2xl text-xs font-medium border transition-all duration-300 cursor-pointer shadow-xl active:scale-95 ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface/85 backdrop-blur-2xl text-xs font-medium border transition-all duration-300 cursor-pointer shadow-xl active:scale-95 ${
             isZenMode
               ? 'bg-teal-500/30 text-teal-200 border-teal-400/50 opacity-80 hover:opacity-100 shadow-[0_0_12px_rgba(45,212,191,0.3)]'
               : 'text-slate-200 hover:text-white hover:bg-white/10 border-white/12 opacity-100'
@@ -99,7 +110,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isZenMode, onToggleZen, onOpenSe
         <button
           type="button"
           onClick={onOpenSettings}
-          className={`w-9 h-9 rounded-full bg-[#0c0e14]/85 backdrop-blur-2xl flex items-center justify-center text-slate-200 hover:text-white hover:bg-white/10 active:scale-95 transition-all duration-500 shadow-xl border border-white/12 cursor-pointer ${
+          className={`w-9 h-9 rounded-full bg-surface/85 backdrop-blur-2xl flex items-center justify-center text-slate-200 hover:text-white hover:bg-white/10 active:scale-95 transition-all duration-500 shadow-xl border border-white/12 cursor-pointer ${
             isZenMode ? 'opacity-0 -translate-y-2 pointer-events-none' : 'opacity-100 translate-y-0'
           }`}
           title="Settings & Tweaks (Hotkey: S)"
@@ -111,7 +122,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isZenMode, onToggleZen, onOpenSe
 
       {/* ── 2b. Top-Center: always-visible scene chip (‹ name ›), hidden while the full pill is open ── */}
       <div
-        className={`fixed bottom-4 sm:bottom-auto sm:top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-0.5 p-0.5 rounded-full bg-[#0c0e14]/85 backdrop-blur-2xl border border-white/12 shadow-xl select-none transition-all duration-300 ${
+        className={`fixed bottom-4 sm:bottom-auto sm:top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-0.5 p-0.5 rounded-full bg-surface/85 backdrop-blur-2xl border border-white/12 shadow-xl select-none transition-all duration-300 ${
           isZenMode || isPillOpen ? 'opacity-0 -translate-y-2 pointer-events-none' : 'opacity-100'
         }`}
       >
@@ -167,7 +178,7 @@ export const TopBar: React.FC<TopBarProps> = ({ isZenMode, onToggleZen, onOpenSe
         role="listbox"
         aria-label="Scenes"
       >
-        <div className="flex items-center gap-1 p-1 rounded-2xl glass-panel-subtle border border-white/10 shadow-2xl backdrop-blur-2xl bg-[#090a10]/80 max-w-[92vw] overflow-x-auto custom-scrollbar">
+        <div className="flex items-center gap-1 p-1 rounded-2xl glass-panel-subtle border border-white/10 shadow-2xl backdrop-blur-2xl bg-surface/80 max-w-[92vw] overflow-x-auto custom-scrollbar">
           {CATALOG.map((scene) => {
             const isSelected = activeScene === scene.id;
             const displayLabel = labelOf(scene.id);

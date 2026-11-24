@@ -3,10 +3,11 @@ import { CustomSlotId, Habitat, WorldContext } from '../../types/environment';
 import { SimplexNoise } from '../physics/SimplexNoise';
 import { FluidGasField } from '../physics/FluidGasField';
 import { Layer, code } from '../core/RenderGrid';
-import { hex, mix } from '../core/Color';
+import { hex, inkOnPaper, mix } from '../core/Color';
 import { cellColor, tone } from '../image-converter/ImageProcessor';
 import { InkRamp, cellHash, measuredRamp, pickGlyph, sampleLinear } from '../image-converter/AsciiQuality';
 import { EdgeDetector, SUB_X, SUB_Y, ShapeTable, matchShape, shapeTable } from '../image-converter/ShapeMatch';
+import { AnimatedImage } from '../image-converter/AnimatedImage';
 import { ImageStore } from '../../services/imageStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { CustomImageConfig, DEFAULT_CUSTOM_CONFIG } from '../../types/settings';
@@ -19,6 +20,10 @@ const BRAILLE_BIT = [
   [0x01, 0x02, 0x04, 0x40],
   [0x08, 0x10, 0x20, 0x80],
 ];
+
+const DARK_BACKDROP = [hex('#08080c'), hex('#06070a'), hex('#050608')];
+const LIGHT_BACKDROP = [hex('#fbfbfd'), hex('#f7f8fb'), hex('#f2f4f8')];
+const WHITE = hex('#ffffff');
 
 interface WavePulse {
   x: number;
@@ -33,7 +38,14 @@ interface WavePulse {
 export class CustomImageScene extends BaseEnvironment {
   public readonly id: CustomSlotId;
   public readonly preferredStyle = 'ascii-standard' as const;
-  public readonly backdrop = [hex('#08080c'), hex('#06070a'), hex('#050608')];
+  public backdrop = DARK_BACKDROP;
+  /** Light theme: dark ink on white (ink modes invert the tone ramp). */
+  private light = false;
+  /** Low power: plain sampling, edges refreshed less often. */
+  private lowPower = false;
+  /** Animated GIF / WebP frames (ImageDecoder), or null. */
+  private anim: AnimatedImage | null = null;
+  private animBuilt = -1;
 
   private noise = new SimplexNoise(3);
   private fluid = new FluidGasField(1.77, 1.35);
@@ -129,7 +141,9 @@ export class CustomImageScene extends BaseEnvironment {
   }
 
   public loadImage(): void {
-    ImageStore.loadImage(this.id).then((blob) => {
+    ImageStore.loadImage(this.id).then(async (blob) => {
+      this.anim?.close();
+      this.anim = null;
       // Clean up previous video
       if (this.video) {
         this.video.pause();
@@ -177,6 +191,15 @@ export class CustomImageScene extends BaseEnvironment {
         if (this.wantPlay) vid.play().catch(() => {});
         this.video = vid;
       } else {
+        // Animated GIF / WebP: decode frame by frame where the browser can.
+        const anim = await AnimatedImage.open(blob);
+        if (anim) {
+          (this.anim as AnimatedImage | null)?.close(); // a newer load may have landed meanwhile
+          this.anim = anim;
+          this.animBuilt = -1;
+          this.configVersion++;
+          return;
+        }
         const url = URL.createObjectURL(blob);
         const img = new Image();
         img.onload = () => {
@@ -196,7 +219,8 @@ export class CustomImageScene extends BaseEnvironment {
 
   private build(ctx: WorldContext): void {
     this.builtVersion = this.configVersion;
-    const source = this.isVideo ? this.video : this.image;
+    const source: CanvasImageSource | null = this.anim ? this.anim.frame : this.isVideo ? this.video : this.image;
+    const moving = this.isVideo || !!this.anim;
     const n = this.cols * this.rows;
     if (this.lum.length !== n) {
       this.lum = new Float32Array(n);
@@ -208,8 +232,8 @@ export class CustomImageScene extends BaseEnvironment {
     }
 
     if (!source) return;
-    const srcW = this.isVideo ? (this.video?.videoWidth || 0) : (this.image?.naturalWidth || 0);
-    const srcH = this.isVideo ? (this.video?.videoHeight || 0) : (this.image?.naturalHeight || 0);
+    const srcW = this.anim ? this.anim.width : this.isVideo ? (this.video?.videoWidth || 0) : (this.image?.naturalWidth || 0);
+    const srcH = this.anim ? this.anim.height : this.isVideo ? (this.video?.videoHeight || 0) : (this.image?.naturalHeight || 0);
     if (srcW <= 0 || srcH <= 0) return;
 
     const conf = this.getConfig();
@@ -234,9 +258,11 @@ export class CustomImageScene extends BaseEnvironment {
 
     // Average each sample over several pixels in linear light (fewer when the
     // grid is already sub-sampled, and for video).
-    const ss = sub[0] * sub[1] > 4 ? (this.isVideo ? 1 : 2) : this.isVideo ? 2 : 3;
+    const ss = this.lowPower ? 1 : sub[0] * sub[1] > 4 ? (moving ? 1 : 2) : moving ? 2 : 3;
     const data = sampleLinear(source, sx, sy, sw, sh, w, h, ss, this.offscreenCanvas);
-    const lum = tone(data, w * h, conf);
+    // Light theme: ink modes draw darkness, so the tone ramp flips (colour modes keep it).
+    const inkMode = conf.renderMode === 'characters' || conf.renderMode === 'braille';
+    const lum = tone(data, w * h, { ...conf, invert: conf.invert !== (this.light && inkMode) });
     // The web font may have arrived since the last build: re-measure (cached once it has).
     this.ramp = measuredRamp(RAMP_FONT);
 
@@ -304,7 +330,9 @@ export class CustomImageScene extends BaseEnvironment {
     // Video: refresh edges every other frame (contours move slowly; halves the cost).
     let ridge: Float32Array | null = null;
     if (strength > 0) {
-      const reuse = this.isVideo && (this.edgeTick++ & 1) === 1 && this.edges.ridge.length === w * h;
+      const moving = this.isVideo || !!this.anim;
+      const every = this.lowPower ? 3 : 2;
+      const reuse = moving && this.edgeTick++ % every !== 0 && this.edges.ridge.length === w * h;
       ridge = reuse ? this.edges.ridge : this.edges.detect(lum, w, h);
     }
     const subInk = this.subInk;
@@ -354,12 +382,15 @@ export class CustomImageScene extends BaseEnvironment {
 
   public update(dt: number, ctx: WorldContext): void {
     this.time += dt;
+    if (this.anim && this.wantPlay) this.anim.advance(dt * 1000);
+    const newAnimFrame = !!this.anim && this.anim.frames !== this.animBuilt;
+    if (newAnimFrame) this.animBuilt = this.anim!.frames;
     const vid = this.isVideo ? this.video : null;
     // Only re-sample a video when it has moved on to a new frame (frame callbacks
     // where the browser has them, otherwise a changed currentTime).
     const newVideoFrame = !!vid && vid.readyState >= 2 &&
       (this.frameCallbackOn ? this.videoFrames !== this.builtFrames : vid.currentTime !== this.lastVideoTime);
-    if (newVideoFrame || this.builtVersion !== this.configVersion) {
+    if (newVideoFrame || newAnimFrame || this.builtVersion !== this.configVersion) {
       if (vid) {
         this.lastVideoTime = vid.currentTime;
         this.builtFrames = this.videoFrames;
@@ -445,7 +476,7 @@ export class CustomImageScene extends BaseEnvironment {
     const cols = this.cols;
     const rows = this.rows;
 
-    if (!this.image && !this.video) {
+    if (!this.image && !this.video && !this.anim) {
       this.renderEmpty(ctx);
       return;
     }
@@ -577,11 +608,15 @@ export class CustomImageScene extends BaseEnvironment {
         const effectiveLum = Math.max(0, Math.min(1, rawLum + surgeGlow * 0.65 + cursorGlow * 0.35 + lantern * (0.35 + glowVal * 0.5)));
 
         // Backlight Phosphor Glow Calculation
+        const light = this.light;
+        const glowScale = light ? 0.55 : 1;
         const bgGlowAlpha = Math.min(
           0.88,
-          (effectiveLum > 0.04 ? (effectiveLum * 0.40 + 0.08) * glowVal : 0) + surgeGlow * 0.5 + cursorGlow + lantern * 0.3
+          ((effectiveLum > 0.04 ? (effectiveLum * 0.40 + 0.08) * glowVal : 0) + surgeGlow * 0.5 + cursorGlow + lantern * 0.3) * glowScale
         );
-        const bgGlowCol = mix(col, hex('#000000'), 0.44);
+        // Light: a pale tint of the cell's colour behind dark ink.
+        const bgGlowCol = light ? mix(col, WHITE, 0.8) : mix(col, hex('#000000'), 0.44);
+        if (light && conf.renderMode !== 'blocks' && conf.renderMode !== 'tiles') col = inkOnPaper(col);
 
         switch (conf.renderMode) {
           case 'characters': {
@@ -615,8 +650,9 @@ export class CustomImageScene extends BaseEnvironment {
           case 'tiles': {
             if (effectiveLum < 0.04) break;
             const g = TILE_GLYPHS[Math.min(TILE_GLYPHS.length - 1, Math.floor(effectiveLum * TILE_GLYPHS.length))];
-            const tileAlpha = 0.3 + effectiveLum * 0.7;
-            const fgTint = mix(col, 0, 0.55);
+            // Light: the photo as a mosaic on white (tiles keep their own colours).
+            const tileAlpha = light ? 0.55 + effectiveLum * 0.4 : 0.3 + effectiveLum * 0.7;
+            const fgTint = light ? mix(col, 0, 0.3) : mix(col, 0, 0.55);
             grid.putSolid(c, r, g, fgTint, 0.75, col, tileAlpha, Layer.SKY);
             break;
           }
@@ -653,7 +689,7 @@ export class CustomImageScene extends BaseEnvironment {
       for (let c = 0; c < this.cols; c += 2) {
         const v = this.noise.noise3D(c * 0.04, r * 0.08, this.time * 0.05) * 0.5 + 0.5;
         if (v > 0.64) {
-          grid.putSolid(c, r, 0, 0, 0, mix(hex('#181822'), hex('#38bdf8'), (v - 0.64) * 1.5), (v - 0.64) * 0.5, Layer.SKY);
+          grid.putSolid(c, r, 0, 0, 0, mix(hex(this.light ? '#e6ebf3' : '#181822'), hex(this.light ? '#0ea5e9' : '#38bdf8'), (v - 0.64) * 1.5), (v - 0.64) * 0.5, Layer.SKY);
         }
       }
     }
@@ -666,7 +702,7 @@ export class CustomImageScene extends BaseEnvironment {
     const base = Math.floor(this.rows * 0.78);
     lines.forEach((s, k) => {
       const c0 = Math.floor((this.cols - s.length) / 2);
-      const color = k === 0 ? hex('#38bdf8') : hex('#94a3b8');
+      const color = k === 0 ? hex(this.light ? '#0284c7' : '#38bdf8') : hex(this.light ? '#475569' : '#94a3b8');
       const alpha = k === 0 ? 0.95 : 0.75;
       grid.text(c0, base + k * 2, s, color, alpha, Layer.FX);
     });
@@ -717,6 +753,7 @@ export class CustomImageScene extends BaseEnvironment {
   public isIdle(): boolean {
     if (this.builtVersion !== this.configVersion) return false;
     if (this.isVideo && this.video && !this.video.paused) return false;
+    if (this.anim && this.wantPlay) return false;
     if (!this.lanternSettled) return false;
     return !this.fluid.active && this.wavePulses.length === 0;
   }
@@ -727,6 +764,21 @@ export class CustomImageScene extends BaseEnvironment {
     if (!this.video) return;
     if (on) this.video.play().catch(() => {});
     else this.video.pause();
+  }
+
+  /** Light theme on or off (dark ink on white). */
+  public setLight(on: boolean): void {
+    if (on === this.light) return;
+    this.light = on;
+    this.backdrop = on ? LIGHT_BACKDROP : DARK_BACKDROP;
+    this.configVersion++;
+  }
+
+  /** Low power: plain sampling and fewer edge refreshes. */
+  public setLowPower(on: boolean): void {
+    if (on === this.lowPower) return;
+    this.lowPower = on;
+    this.configVersion++;
   }
 
   public tune(_values?: Record<string, number | boolean>): void {
@@ -747,5 +799,7 @@ export class CustomImageScene extends BaseEnvironment {
       this.videoUrl = null;
     }
     this.image = null;
+    this.anim?.close();
+    this.anim = null;
   }
 }

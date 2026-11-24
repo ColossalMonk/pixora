@@ -7,20 +7,26 @@ import { CustomImageScene } from '../../engine/environments/CustomImageScene';
 import { RenderGrid } from '../../engine/core/RenderGrid';
 import { Rasterizer } from '../../engine/core/Rasterizer';
 import { GlyphGL } from '../../engine/core/GlyphGL';
+import { Power, usePowerReason } from '../../services/power';
+import { registerCapturer } from '../../services/capture';
+import type { ResolvedTheme } from '../../services/theme';
 
 interface AsciiCanvasProps {
   focusRef?: React.RefObject<HTMLElement | null>;
   /** Fade animals behind the focus box's first child (the clock/search column). */
   calm?: boolean;
+  theme?: ResolvedTheme;
 }
 
-export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true }) => {
+export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true, theme = 'dark' }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animalEngineRef = useRef<AnimalEngine | null>(null);
   const customSceneRef = useRef<CustomImageScene | null>(null);
   const customRafRef = useRef<number | null>(null);
   const customGridRef = useRef<RenderGrid>(new RenderGrid());
   const customRasterizerRef = useRef<Rasterizer>(new Rasterizer());
+  /** Re-measures the custom slot (low power or theme changed) without reloading its media. */
+  const customRefreshRef = useRef<(() => void) | null>(null);
 
   const {
     isLoaded,
@@ -30,11 +36,22 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
     dimBackground,
     fontSize,
     reducedMotion,
+    powerMode,
   } = useSettingsStore();
+
+  const lowPower = usePowerReason() !== null;
+  const lowPowerRef = useRef(lowPower);
+  lowPowerRef.current = lowPower;
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
 
   const isAnimal = (ANIMAL_KEYS as readonly string[]).includes(activeScene);
 
-  // ── Handle Animal Scenes (Directly from DesignerStephen1/ascii-animals) ──
+  useEffect(() => {
+    Power.setMode(powerMode);
+  }, [powerMode]);
+
+  // ── Animal scenes (ported from DesignerStephen1/ascii-animals) ──
   useEffect(() => {
     if (!isLoaded || !canvasRef.current) return;
 
@@ -50,9 +67,13 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
       if (!animalEngineRef.current) {
         const engine = new AnimalEngine(canvasRef.current, {
           animal: animalKey,
-          theme: 'dark',
+          theme: themeRef.current,
         });
+        engine.onFrameCost = (ms) => Power.reportFrame(ms);
+        engine.setLowPower(lowPowerRef.current);
         animalEngineRef.current = engine;
+        // Dev only: lets the console inspect the live engine.
+        if (location.hostname === 'localhost') (window as unknown as { __pixoraAnimals?: AnimalEngine }).__pixoraAnimals = engine;
       } else {
         animalEngineRef.current.setAnimal(animalKey);
       }
@@ -64,6 +85,8 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
       for (const [k, v] of Object.entries(tweaks)) {
         animalEngineRef.current.set(k, v);
       }
+      const engine = animalEngineRef.current;
+      return registerCapturer(() => engine.capture());
     } else {
       // Custom image slot is active -> destroy animal engine
       if (animalEngineRef.current) {
@@ -74,6 +97,8 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
       // Start Custom Image Scene
       const slotId = activeScene as CustomSlotId;
       const scene = new CustomImageScene(slotId);
+      scene.setLight(themeRef.current === 'light');
+      scene.setLowPower(lowPowerRef.current);
       customSceneRef.current = scene;
       // Dev only: lets the console inspect the live scene.
       if (location.hostname === 'localhost') (window as unknown as { __pixoraScene?: CustomImageScene }).__pixoraScene = scene;
@@ -92,6 +117,7 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
       const fontPx = fontSize || 14;
       // JetBrains Mono is bundled (600 weight included), so cells are the same on every machine.
       const font = `600 ${fontPx}px "JetBrains Mono", ui-monospace, monospace`;
+      const dprNow = () => (lowPowerRef.current ? 1 : Math.min(window.devicePixelRatio || 1, 2));
 
       const inputState = {
         x: -1,
@@ -145,7 +171,7 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
       const resizeCustom = () => {
         const rect = canvas.getBoundingClientRect();
         if (rect.width < 1 || rect.height < 1) return;
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const dpr = dprNow();
         canvas.width = Math.round(rect.width * dpr);
         canvas.height = Math.round(rect.height * dpr);
         ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -167,6 +193,11 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
         else scene.init(wctx);
         initialised = true;
         dirty = true;
+      };
+      customRefreshRef.current = () => {
+        scene.setLight(themeRef.current === 'light');
+        scene.setLowPower(lowPowerRef.current);
+        resizeCustom();
       };
 
       const makeContext = (rect: DOMRect, time: number): WorldContext => ({
@@ -195,15 +226,32 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
       syncPlayback();
       document.addEventListener('visibilitychange', syncPlayback);
 
+      /** Draws the grid; returns false if WebGL went away (2D was used instead). */
+      const drawGrid = (rect: DOMRect) => {
+        const dpr = dprNow();
+        if (glRenderer && glRenderer.draw(grid, rect.width, rect.height, dpr, font)) return;
+        if (glRenderer) {
+          // Context lost: fall back to the 2D renderer for this scene.
+          glRenderer = null;
+          glCanvas.remove();
+        }
+        rasterizer.prepareBackdrop(rect.width, rect.height, dpr, scene.backdrop);
+        rasterizer.draw(ctx2d, grid, rect.width, rect.height, font, null, true);
+      };
+
       const loop = (now: number) => {
         customRafRef.current = requestAnimationFrame(loop);
 
         // Nothing changing (still picture, pointer at rest, no wake or ripples):
-        // keep the slow ambient drift at ~12 fps, or hold the frame under reduced motion.
+        // keep the slow ambient drift at ~12 fps (6 in low power), or hold the
+        // frame under reduced motion. Low power also caps busy frames at 30 fps.
+        const low = lowPowerRef.current;
         const busy = !scene.isIdle() || now - lastMove < 800 || inputState.clicks.length > 0;
-        const gap = reducedMotion ? Infinity : 1000 / 12;
-        if (!dirty && !busy && now - lastDraw < gap) return;
+        const idleGap = reducedMotion ? Infinity : 1000 / (low ? 6 : 12);
+        const gap = busy ? (low ? 1000 / 30 - 2 : 0) : idleGap;
+        if (!dirty && now - lastDraw < gap) return;
 
+        const work = performance.now();
         const dt = Math.min(0.1, (now - lastTime) / 1000);
         lastTime = now;
         lastDraw = now;
@@ -220,21 +268,30 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
 
         grid.clear();
         scene.render(wctx);
-
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        if (glRenderer && glRenderer.draw(grid, rect.width, rect.height, dpr, font)) return;
-        if (glRenderer) {
-          // Context lost: fall back to the 2D renderer for this scene.
-          glRenderer = null;
-          glCanvas.remove();
-        }
-        rasterizer.prepareBackdrop(rect.width, rect.height, dpr, scene.backdrop);
-        rasterizer.draw(ctx2d, grid, rect.width, rect.height, font, null, true);
+        drawGrid(rect);
+        Power.reportFrame(performance.now() - work);
       };
 
       customRafRef.current = requestAnimationFrame(loop);
 
+      const unregister = registerCapturer(() => {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width < 1) return null;
+        grid.clear();
+        scene.render(makeContext(rect, performance.now() / 1000));
+        drawGrid(rect);
+        const out = document.createElement('canvas');
+        out.width = canvas.width;
+        out.height = canvas.height;
+        const g = out.getContext('2d')!;
+        g.drawImage(canvas, 0, 0);
+        if (glRenderer) g.drawImage(glCanvas, 0, 0, out.width, out.height);
+        return out;
+      });
+
       return () => {
+        unregister();
+        customRefreshRef.current = null;
         if (customRafRef.current) {
           cancelAnimationFrame(customRafRef.current);
           customRafRef.current = null;
@@ -249,6 +306,13 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
       };
     }
   }, [isLoaded, activeScene, isAnimal, fontSize, reducedMotion]);
+
+  // Low power and theme apply live, without restarting the scene.
+  useEffect(() => {
+    animalEngineRef.current?.setLowPower(lowPower);
+    animalEngineRef.current?.setTheme(theme);
+    customRefreshRef.current?.();
+  }, [lowPower, theme]);
 
   // Sync animal tweaks live
   useEffect(() => {
@@ -290,7 +354,7 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
       observer.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, [isLoaded, activeScene, isAnimal, calm, focusRef]);
+  }, [isLoaded, activeScene, isAnimal, calm, focusRef, lowPower, theme]);
 
   // Sync custom configs live
   useEffect(() => {
@@ -314,7 +378,7 @@ export const AsciiCanvas: React.FC<AsciiCanvasProps> = ({ focusRef, calm = true 
   }, []);
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[#06070c]">
+    <div className="absolute inset-0 overflow-hidden bg-canvas">
       <canvas
         ref={canvasRef}
         aria-hidden="true"
